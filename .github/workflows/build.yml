@@ -1,0 +1,76 @@
+name: Build WewPagram
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 350
+
+    steps:
+      - name: Checkout mod patch (this repo)
+        uses: actions/checkout@v4
+        with:
+          path: wewpagram-mod-source
+
+      - name: Checkout upstream Telegram-iOS (with real submodules)
+        run: |
+          set -x
+          git clone --recursive -j8 --depth 1 https://github.com/TelegramMessenger/Telegram-iOS.git upstream
+
+      - name: Apply WewPagram mod files
+        run: |
+          set -x
+          cp -R wewpagram-mod-source/wewpagram-mod/. upstream/
+          mkdir -p upstream/wewpagram-config
+          cp wewpagram-mod-source/wewpagram-config/appstore-configuration.json upstream/wewpagram-config/
+
+      - name: Show disk space
+        run: df -h /
+
+      - name: Select Xcode
+        run: |
+          set -x
+          ls /Applications | grep -i xcode || true
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Import fake-codesigning certificates
+        run: |
+          cd upstream
+          python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
+
+      - name: Build WewPagram
+        run: |
+          set -x
+          cd upstream
+          BAZEL_USER_ROOT="/private/var/tmp/_bazel_wewpagram"
+          BUILD_NUMBER="$(git -C . rev-list --count HEAD 2>/dev/null || echo 100001)"
+
+          python3 -u build-system/Make/Make.py \
+            --overrideXcodeVersion \
+            --bazelUserRoot="$BAZEL_USER_ROOT" \
+            build \
+            --configurationPath="wewpagram-config/appstore-configuration.json" \
+            --codesigningInformationPath=build-system/fake-codesigning \
+            --configuration=release_arm64 \
+            --buildNumber="$BUILD_NUMBER"
+
+      - name: Collect artifacts
+        run: |
+          set -x
+          cd upstream
+          mkdir -p build/artifacts
+          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/Telegram.ipa; do
+            cp "$f" build/artifacts/WewPagram.ipa
+          done
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WewPagram-ipa
+          path: upstream/build/artifacts/WewPagram.ipa
+          retention-days: 14
