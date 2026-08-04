@@ -1,0 +1,82 @@
+name: Auto apply patch to remove shallow clone
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo (full history)
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MACHINE_USER_PAT }}
+          fetch-depth: 0
+
+      - name: Create branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b fix/remove-shallow-clone-submodules
+
+      - name: Patch build.yml
+        run: |
+          FILE=".github/workflows/build.yml"
+          if [ ! -f "$FILE" ]; then
+            echo "ERROR: $FILE not found" >&2
+            exit 1
+          fi
+
+          # Replace the shallow clone line with non-shallow clone
+          OLD='git clone --recursive -j8 --depth 1 https://github.com/TelegramMessenger/Telegram-iOS.git upstream'
+          NEW='# Не использовать --depth 1, чтобы submodules имели .git и сборка не падала
+git clone --recursive -j8 https://github.com/TelegramMessenger/Telegram-iOS.git upstream'
+
+          if grep -F "$OLD" "$FILE"; then
+            perl -0777 -pe "s/\Q$OLD\E/$NEW/s" -i "$FILE"
+            echo "Patched $FILE"
+            git add "$FILE"
+          else
+            echo "Pattern not found; no changes made to $FILE"
+          fi
+
+      - name: Commit and push branch
+        env:
+          GIT_PUSH_TOKEN: ${{ secrets.MACHINE_USER_PAT }}
+        run: |
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "fix: remove --depth 1 from upstream clone so submodules keep .git metadata"
+            git push -u "https://x-access-token:${GIT_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD
+          fi
+
+      - name: Create Pull Request
+        if: ${{ steps='true' || always() }} # ensure conditional not blocking; see note below
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.MACHINE_USER_PAT }}
+          commit-message: "fix: remove --depth 1 from upstream clone so submodules keep .git metadata"
+          branch: fix/remove-shallow-clone-submodules
+          title: "fix: remove --depth 1 from upstream clone so submodules keep .git metadata"
+          body: |
+            Fix build failure: third-party submodules (dav1d) expect .git metadata; shallow clone (--depth 1) caused `fatal: not a git repository` during build. This removes --depth 1 so submodules are real checkouts.
+          base: main
+          labels: automated, ci
+
+      - name: Trigger Build WewPagram workflow on branch (optional)
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.MACHINE_USER_PAT }}
+          script: |
+            // dispatch the existing build workflow (build.yml) on the new branch
+            await github.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build.yml',
+              ref: 'fix/remove-shallow-clone-submodules'
+            })
