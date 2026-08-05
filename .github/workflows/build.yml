@@ -60,17 +60,19 @@ jobs:
             --buildNumber="$BUILD_NUMBER"
 
       - name: Collect artifacts
-        run: |
-          set -x
-          cd upstream
-          mkdir -p build/artifacts
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/Telegram.ipa; do
-            cp "$f" build/artifacts/WewPagram.ipa
-          done
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: WewPagram-ipa
-          path: upstream/build/artifacts/WewPagram.ipa
+  run: |
+    set -x
+    cd upstream
+    mkdir -p build/artifacts
+    IPA_PATH=$(find bazel-out -type f -name 'Telegram.ipa' -print -quit || true)
+    if [ -z "$IPA_PATH" ]; then
+      echo "ERROR: IPA not found. Listing bazel-out and last build logs:"
+      ls -la bazel-out || true
+      # показать последние 200 строк лога сборки (в зависимости от того где лог)
+      # если Make.py пишет в stdout, можно сохранить лог в файл и показать tail
+      find . -type f -name '*build.log' -print -quit || true
+      exit 1
+    fi
+    echo "Found IPA: $IPA_PATH"
+    cp "$IPA_PATH" build/artifacts/WewPagram.ipa
           retention-days: 14
