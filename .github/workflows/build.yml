@@ -32,7 +32,7 @@ jobs:
       - name: Apply WewPagram mod files
         run: |
           set -x
-          # Копируем мод в upstream, НЕ удаляя существующие файлы upstream (убрали --delete)
+          # Не удаляем upstream файлы — rsync без --delete
           rsync -a --exclude='.git' wewpagram-mod-source/wewpagram-mod/ upstream/
           mkdir -p upstream/wewpagram-config
           cp wewpagram-mod-source/wewpagram-config/appstore-configuration.json upstream/wewpagram-config/
@@ -55,17 +55,18 @@ jobs:
             python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           else
             echo "NOTICE: build-system/Make/ImportCertificates.py not found — skipping certificate import."
-            echo "If certificates are required, ensure upstream's script exists and wasn't overwritten by the mod."
           fi
 
-      - name: Build WewPagram
+      - name: Build WewPagram (capture logs)
         run: |
           set -x
           set -o pipefail
           cd upstream
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_wewpagram"
+          export BAZEL_USER_ROOT
           BUILD_NUMBER="$(git -C . rev-list --count HEAD 2>/dev/null || echo 100001)"
 
+          # Записываем stdout+stderr в build.log и сохраняем код возврата
           python3 -u build-system/Make/Make.py \
             --overrideXcodeVersion \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
@@ -73,24 +74,57 @@ jobs:
             --configurationPath="wewpagram-config/appstore-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
             --configuration=release_arm64 \
-            --buildNumber="$BUILD_NUMBER"
+            --buildNumber="$BUILD_NUMBER" 2>&1 | tee build.log
+          BUILD_EXIT=${PIPESTATUS[0]:-1}
 
-      - name: Collect artifacts
+          # Если сборка провалилась — сохраняем логи в артефакты и выходим с тем же кодом
+          if [ "$BUILD_EXIT" -ne 0 ]; then
+            echo "BUILD FAILED with exit code $BUILD_EXIT"
+            mkdir -p build/artifacts/logs
+            cp build.log build/artifacts/logs/ || true
+
+            # Скопировать логи bazel/user если они доступны
+            if [ -d "$BAZEL_USER_ROOT" ]; then
+              echo "Copying bazel user root logs (partial)..."
+              find "$BAZEL_USER_ROOT" -maxdepth 4 -type f -name '*.log' -print -exec cp --parents {} build/artifacts/logs/ \; || true
+            fi
+
+            # Список bazel-out для диагностики
+            echo "Listing bazel-out top-level:"
+            ls -la bazel-out || true
+
+            # Вывести последние строки build.log для удобства (дублируется в артефактах)
+            echo "==== last 200 lines of build.log ===="
+            tail -n 200 build.log || true
+
+            exit "$BUILD_EXIT"
+          fi
+
+      - name: Collect artifacts (IPA + logs)
         run: |
           set -x
           cd upstream
           mkdir -p build/artifacts
-          IPA_PATH=$(find bazel-out -type f -name 'Telegram.ipa' -print -quit || true)
+
+          # Найти любую .ipa (не только Telegram.ipa)
+          IPA_PATH=$(find bazel-out -type f -name '*.ipa' -print -quit || true)
           if [ -z "$IPA_PATH" ]; then
-            echo "ERROR: IPA not found. Listing bazel-out and recent logs for diagnosis."
+            echo "ERROR: IPA not found after successful build. Listing bazel-out and tail of build.log:"
             ls -la bazel-out || true
-            echo "Showing last 200 lines of possible build log files (if any):"
-            for f in $(find . -type f \( -name '*build*.log' -o -name '*make*.log' -o -name '*bazel*.log' \) -maxdepth 6 2>/dev/null); do
-              echo "=== $f ==="
-              tail -n 200 "$f" || true
-            done
+            if [ -f build.log ]; then
+              echo "==== last 300 lines of build.log ===="
+              tail -n 300 build.log || true
+              mkdir -p build/artifacts/logs
+              cp build.log build/artifacts/logs/ || true
+            fi
+            # Также собрать любые другие логи, если они есть
+            if [ -d "$BAZEL_USER_ROOT" ]; then
+              find "$BAZEL_USER_ROOT" -maxdepth 4 -type f -name '*.log' -print -exec cp --parents {} build/artifacts/logs/ \; || true
+            fi
+            # Выход с ошибкой, чтобы CI показал падение и артефакты логов были доступны
             exit 1
           fi
+
           echo "Found IPA: $IPA_PATH"
           cp "$IPA_PATH" build/artifacts/WewPagram.ipa
           ls -la build/artifacts
@@ -100,4 +134,14 @@ jobs:
         with:
           name: WewPagram-ipa
           path: upstream/build/artifacts/WewPagram.ipa
+          retention-days: 14
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            upstream/build/artifacts/logs/**
+            upstream/build/artifacts/**
           retention-days: 14
