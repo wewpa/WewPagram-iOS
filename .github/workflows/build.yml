@@ -59,7 +59,7 @@ jobs:
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER"
 
-      - name: Collect artifacts
+            - name: Collect artifacts
   run: |
     set -x
     cd upstream
@@ -75,4 +75,6 @@ jobs:
     fi
     echo "Found IPA: $IPA_PATH"
     cp "$IPA_PATH" build/artifacts/WewPagram.ipa
+
+      
           retention-days: 14
