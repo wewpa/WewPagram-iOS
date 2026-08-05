@@ -16,7 +16,7 @@ jobs:
         with:
           path: wewpagram-mod-source
 
-            - name: Checkout upstream Telegram-iOS (with real submodules)
+      - name: Checkout upstream Telegram-iOS (with real submodules)
         run: |
           set -x
           git clone --recursive -j8 https://github.com/TelegramMessenger/Telegram-iOS.git upstream
@@ -32,7 +32,8 @@ jobs:
       - name: Apply WewPagram mod files
         run: |
           set -x
-          cp -R wewpagram-mod-source/wewpagram-mod/. upstream/
+          # use rsync to avoid accidentally overwriting .git metadata
+          rsync -a --delete --exclude='.git' wewpagram-mod-source/wewpagram-mod/ upstream/
           mkdir -p upstream/wewpagram-config
           cp wewpagram-mod-source/wewpagram-config/appstore-configuration.json upstream/wewpagram-config/
 
@@ -48,12 +49,14 @@ jobs:
 
       - name: Import fake-codesigning certificates
         run: |
+          set -x
           cd upstream
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
 
       - name: Build WewPagram
         run: |
           set -x
+          set -o pipefail
           cd upstream
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_wewpagram"
           BUILD_NUMBER="$(git -C . rev-list --count HEAD 2>/dev/null || echo 100001)"
@@ -72,15 +75,21 @@ jobs:
           set -x
           cd upstream
           mkdir -p build/artifacts
+          # Найти первую IPA в bazel-out
           IPA_PATH=$(find bazel-out -type f -name 'Telegram.ipa' -print -quit || true)
           if [ -z "$IPA_PATH" ]; then
-            echo "ERROR: IPA not found. Listing bazel-out and last build logs:"
+            echo "ERROR: IPA not found. Listing bazel-out and recent logs for diagnosis."
             ls -la bazel-out || true
-            find . -type f -name '*build.log' -print -quit || true
+            echo "Showing last 200 lines of possible build log files (if any):"
+            for f in $(find . -type f -name '*build*.log' -o -name '*make*.log' -maxdepth 4 2>/dev/null); do
+              echo "=== $f ==="
+              tail -n 200 "$f" || true
+            done
             exit 1
           fi
           echo "Found IPA: $IPA_PATH"
           cp "$IPA_PATH" build/artifacts/WewPagram.ipa
+          ls -la build/artifacts
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
