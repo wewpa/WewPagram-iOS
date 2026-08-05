@@ -32,8 +32,8 @@ jobs:
       - name: Apply WewPagram mod files
         run: |
           set -x
-          # use rsync to avoid accidentally overwriting .git metadata
-          rsync -a --delete --exclude='.git' wewpagram-mod-source/wewpagram-mod/ upstream/
+          # Копируем мод в upstream, НЕ удаляя существующие файлы upstream (убрали --delete)
+          rsync -a --exclude='.git' wewpagram-mod-source/wewpagram-mod/ upstream/
           mkdir -p upstream/wewpagram-config
           cp wewpagram-mod-source/wewpagram-config/appstore-configuration.json upstream/wewpagram-config/
 
@@ -47,11 +47,16 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
 
-      - name: Import fake-codesigning certificates
+      - name: Import fake-codesigning certificates (if present)
         run: |
           set -x
           cd upstream
-          python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
+          if [ -f build-system/Make/ImportCertificates.py ]; then
+            python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
+          else
+            echo "NOTICE: build-system/Make/ImportCertificates.py not found — skipping certificate import."
+            echo "If certificates are required, ensure upstream's script exists and wasn't overwritten by the mod."
+          fi
 
       - name: Build WewPagram
         run: |
@@ -75,13 +80,12 @@ jobs:
           set -x
           cd upstream
           mkdir -p build/artifacts
-          # Найти первую IPA в bazel-out
           IPA_PATH=$(find bazel-out -type f -name 'Telegram.ipa' -print -quit || true)
           if [ -z "$IPA_PATH" ]; then
             echo "ERROR: IPA not found. Listing bazel-out and recent logs for diagnosis."
             ls -la bazel-out || true
             echo "Showing last 200 lines of possible build log files (if any):"
-            for f in $(find . -type f -name '*build*.log' -o -name '*make*.log' -maxdepth 4 2>/dev/null); do
+            for f in $(find . -type f \( -name '*build*.log' -o -name '*make*.log' -o -name '*bazel*.log' \) -maxdepth 6 2>/dev/null); do
               echo "=== $f ==="
               tail -n 200 "$f" || true
             done
