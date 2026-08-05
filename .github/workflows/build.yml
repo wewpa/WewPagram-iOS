@@ -19,7 +19,7 @@ jobs:
       - name: Checkout upstream Telegram-iOS (with real submodules)
         run: |
           set -x
-          https://github.com/TelegramMessenger/Telegram-iOS.git
+          git clone --recursive -j8 https://github.com/TelegramMessenger/Telegram-iOS.git upstream
 
       - name: Apply WewPagram mod files
         run: |
