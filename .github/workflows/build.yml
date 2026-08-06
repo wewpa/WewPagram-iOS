@@ -106,8 +106,17 @@ jobs:
           cd upstream
           mkdir -p build/artifacts
 
-          # Найти любую .ipa (не только Telegram.ipa)
-          IPA_PATH=$(find bazel-out -type f -name '*.ipa' -print -quit || true)
+          # Bazel always prints this exact stable path on success (confirmed
+          # from build logs) — check it first before falling back to search.
+          IPA_PATH=""
+          if [ -f "bazel-bin/Telegram/Telegram.ipa" ]; then
+            IPA_PATH="bazel-bin/Telegram/Telegram.ipa"
+          else
+            # -L follows symlinks while descending (bazel-out/bazel-bin are
+            # symlinks into the bazelUserRoot execroot, plain find can miss
+            # nested symlink hops without this).
+            IPA_PATH=$(find -L . -type f -name '*.ipa' -print -quit || true)
+          fi
           if [ -z "$IPA_PATH" ]; then
             echo "ERROR: IPA not found after successful build. Listing bazel-out and tail of build.log:"
             ls -la bazel-out || true
