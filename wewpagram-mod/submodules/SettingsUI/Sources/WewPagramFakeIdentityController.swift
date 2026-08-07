@@ -13,17 +13,26 @@ private final class WewPagramFakeIdentityControllerArguments {
     let updateFakeUsername: (String) -> Void
     let updateFakeNftUsername: (String) -> Void
     let updateFakeNftPrice: (String) -> Void
+    let toggleFakeRating: (Bool) -> Void
+    let updateFakeRatingLevel: (String) -> Void
+    let updateFakeRatingStars: (String) -> Void
 
     init(
         updateFakePhoneNumber: @escaping (String) -> Void,
         updateFakeUsername: @escaping (String) -> Void,
         updateFakeNftUsername: @escaping (String) -> Void,
-        updateFakeNftPrice: @escaping (String) -> Void
+        updateFakeNftPrice: @escaping (String) -> Void,
+        toggleFakeRating: @escaping (Bool) -> Void,
+        updateFakeRatingLevel: @escaping (String) -> Void,
+        updateFakeRatingStars: @escaping (String) -> Void
     ) {
         self.updateFakePhoneNumber = updateFakePhoneNumber
         self.updateFakeUsername = updateFakeUsername
         self.updateFakeNftUsername = updateFakeNftUsername
         self.updateFakeNftPrice = updateFakeNftPrice
+        self.toggleFakeRating = toggleFakeRating
+        self.updateFakeRatingLevel = updateFakeRatingLevel
+        self.updateFakeRatingStars = updateFakeRatingStars
     }
 }
 
@@ -32,6 +41,9 @@ private struct WewPagramFakeIdentityState: Equatable {
     var fakeUsername: String
     var fakeNftUsername: String
     var fakeNftPrice: String
+    var fakeRatingEnabled: Bool
+    var fakeRatingLevel: String
+    var fakeRatingStars: String
 }
 
 private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
@@ -40,16 +52,33 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case username
         case nftUsername
         case nftPrice
-        case footer
+        case identityFooter
+        case ratingHeader
+        case ratingToggle
+        case ratingLevel
+        case ratingStars
+        case ratingFooter
     }
 
     case phoneNumber(String)
     case username(String)
     case nftUsername(String)
     case nftPrice(String)
-    case footer(String)
+    case identityFooter(String)
+    case ratingHeader(String)
+    case ratingToggle(Bool)
+    case ratingLevel(String)
+    case ratingStars(String)
+    case ratingFooter(String)
 
-    var section: ItemListSectionId { return 0 }
+    var section: ItemListSectionId {
+        switch self {
+        case .phoneNumber, .username, .nftUsername, .nftPrice, .identityFooter:
+            return 0
+        case .ratingHeader, .ratingToggle, .ratingLevel, .ratingStars, .ratingFooter:
+            return 1
+        }
+    }
 
     var stableId: StableId {
         switch self {
@@ -57,7 +86,12 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case .username: return .username
         case .nftUsername: return .nftUsername
         case .nftPrice: return .nftPrice
-        case .footer: return .footer
+        case .identityFooter: return .identityFooter
+        case .ratingHeader: return .ratingHeader
+        case .ratingToggle: return .ratingToggle
+        case .ratingLevel: return .ratingLevel
+        case .ratingStars: return .ratingStars
+        case .ratingFooter: return .ratingFooter
         }
     }
 
@@ -67,7 +101,12 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case .username: return 1
         case .nftUsername: return 2
         case .nftPrice: return 3
-        case .footer: return 4
+        case .identityFooter: return 4
+        case .ratingHeader: return 5
+        case .ratingToggle: return 6
+        case .ratingLevel: return 7
+        case .ratingStars: return 8
+        case .ratingFooter: return 9
         }
     }
 
@@ -77,7 +116,12 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case let .username(v): if case .username(v) = rhs { return true } else { return false }
         case let .nftUsername(v): if case .nftUsername(v) = rhs { return true } else { return false }
         case let .nftPrice(v): if case .nftPrice(v) = rhs { return true } else { return false }
-        case let .footer(v): if case .footer(v) = rhs { return true } else { return false }
+        case let .identityFooter(v): if case .identityFooter(v) = rhs { return true } else { return false }
+        case let .ratingHeader(v): if case .ratingHeader(v) = rhs { return true } else { return false }
+        case let .ratingToggle(v): if case .ratingToggle(v) = rhs { return true } else { return false }
+        case let .ratingLevel(v): if case .ratingLevel(v) = rhs { return true } else { return false }
+        case let .ratingStars(v): if case .ratingStars(v) = rhs { return true } else { return false }
+        case let .ratingFooter(v): if case .ratingFooter(v) = rhs { return true } else { return false }
         }
     }
 
@@ -96,7 +140,17 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
             return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "NFT-юзернейм"), text: value, placeholder: "Не задан", type: .username, clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakeNftUsername($0) }, action: {})
         case let .nftPrice(value):
             return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Цена NFT"), text: value, placeholder: "Например: 500 TON", type: .regular(capitalization: false, autocorrection: false), clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakeNftPrice($0) }, action: {})
-        case let .footer(text):
+        case let .identityFooter(text):
+            return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
+        case let .ratingHeader(text):
+            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
+        case let .ratingToggle(value):
+            return ItemListSwitchItem(presentationData: presentationData, title: "Фейк-рейтинг", value: value, sectionId: self.section, style: .blocks, updated: { arguments.toggleFakeRating($0) })
+        case let .ratingLevel(value):
+            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Уровень"), text: value, placeholder: "1", type: .number, clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakeRatingLevel($0) }, action: {})
+        case let .ratingStars(value):
+            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Звёзды"), text: value, placeholder: "0", type: .number, clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakeRatingStars($0) }, action: {})
+        case let .ratingFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         }
     }
@@ -108,7 +162,10 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
         fakePhoneNumber: settings.fakePhoneNumber ?? "",
         fakeUsername: settings.fakeUsername ?? "",
         fakeNftUsername: settings.fakeNftUsername ?? "",
-        fakeNftPrice: settings.fakeNftPrice ?? ""
+        fakeNftPrice: settings.fakeNftPrice ?? "",
+        fakeRatingEnabled: settings.fakeRatingEnabled,
+        fakeRatingLevel: String(settings.fakeRatingLevel),
+        fakeRatingStars: String(settings.fakeRatingStars)
     )
     let statePromise = ValuePromise<WewPagramFakeIdentityState>(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
@@ -132,6 +189,18 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
         updateFakeNftPrice: { value in
             settings.fakeNftPrice = value.isEmpty ? nil : value
             updateState { var s = $0; s.fakeNftPrice = value; return s }
+        },
+        toggleFakeRating: { value in
+            settings.fakeRatingEnabled = value
+            updateState { var s = $0; s.fakeRatingEnabled = value; return s }
+        },
+        updateFakeRatingLevel: { value in
+            settings.fakeRatingLevel = Int(value) ?? 1
+            updateState { var s = $0; s.fakeRatingLevel = value; return s }
+        },
+        updateFakeRatingStars: { value in
+            settings.fakeRatingStars = Int(value) ?? 0
+            updateState { var s = $0; s.fakeRatingStars = value; return s }
         }
     )
 
@@ -140,13 +209,20 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
         statePromise.get()
     )
     |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let entries: [WewPagramFakeIdentityEntry] = [
+        var entries: [WewPagramFakeIdentityEntry] = [
             .phoneNumber(state.fakePhoneNumber),
             .username(state.fakeUsername),
             .nftUsername(state.fakeNftUsername),
             .nftPrice(state.fakeNftPrice),
-            .footer("Эти поля меняют только то, что ты видишь в своём профиле в приложении. Собеседники видят твои настоящие данные — изменения никуда не отправляются.")
+            .identityFooter("Эти поля меняют только то, что ты видишь в своём профиле в приложении. Собеседники видят твои настоящие данные — изменения никуда не отправляются."),
+            .ratingHeader("РЕЙТИНГ ПРОФИЛЯ"),
+            .ratingToggle(state.fakeRatingEnabled)
         ]
+        if state.fakeRatingEnabled {
+            entries.append(.ratingLevel(state.fakeRatingLevel))
+            entries.append(.ratingStars(state.fakeRatingStars))
+        }
+        entries.append(.ratingFooter("Подменяет бейдж рейтинга (уровень и число звёзд) рядом с именем в Settings. Тоже только локально."))
 
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Профиль"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks)

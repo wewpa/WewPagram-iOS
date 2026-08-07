@@ -31,6 +31,10 @@ public final class WewPagramSettings {
         static let fakeUsername      = "WewPagram.fakeUsername"
         static let fakeNftUsername   = "WewPagram.fakeNftUsername"
         static let fakeNftPrice      = "WewPagram.fakeNftPrice"
+
+        static let fakeRatingEnabled = "WewPagram.fakeRatingEnabled"
+        static let fakeRatingLevel   = "WewPagram.fakeRatingLevel"
+        static let fakeRatingStars   = "WewPagram.fakeRatingStars"
     }
 
     private init() {
@@ -194,5 +198,23 @@ public final class WewPagramSettings {
     public var fakeNftPrice: String? {
         get { self.defaults.string(forKey: Keys.fakeNftPrice) }
         set { self.defaults.set(newValue, forKey: Keys.fakeNftPrice) }
+    }
+
+    // MARK: - Fake profile rating (local-only, cosmetic — never sent to the server)
+    // Mirrors Telegram's own TelegramStarRating shape (level / stars), so the
+    // caller can build a TelegramStarRating straight from these values.
+    public var fakeRatingEnabled: Bool {
+        get { self.defaults.bool(forKey: Keys.fakeRatingEnabled) }
+        set { self.defaults.set(newValue, forKey: Keys.fakeRatingEnabled) }
+    }
+
+    public var fakeRatingLevel: Int {
+        get { self.defaults.object(forKey: Keys.fakeRatingLevel) as? Int ?? 1 }
+        set { self.defaults.set(newValue, forKey: Keys.fakeRatingLevel) }
+    }
+
+    public var fakeRatingStars: Int {
+        get { self.defaults.object(forKey: Keys.fakeRatingStars) as? Int ?? 0 }
+        set { self.defaults.set(newValue, forKey: Keys.fakeRatingStars) }
     }
 }

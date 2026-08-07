@@ -1240,11 +1240,6 @@ final class PeerInfoHeaderNode: ASDisplayNode {
 
                 var subtitle = wewSettings.fakePhoneNumber ?? formatPhoneNumber(context: self.context, number: user.phone ?? "")
 
-                let usernameToShow = wewSettings.fakeUsername ?? user.addressName
-                if let usernameToShow, !usernameToShow.isEmpty {
-                    subtitle = "\(subtitle) • @\(usernameToShow)"
-                }
-
                 if let nftUsername = wewSettings.fakeNftUsername, !nftUsername.isEmpty {
                     if let nftPrice = wewSettings.fakeNftPrice, !nftPrice.isEmpty {
                         subtitle = "\(subtitle) • @\(nftUsername) (\(nftPrice))"
@@ -2039,7 +2034,15 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         
         var subtitleRatingSize: CGSize?
         
-        if let cachedData = cachedData as? CachedUserData, let starRating = cachedData.starRating {
+        if WewPagramSettings.shared.fakeRatingEnabled {
+            self.currentStarRating = TelegramStarRating(
+                level: Int32(WewPagramSettings.shared.fakeRatingLevel),
+                currentLevelStars: Int64(WewPagramSettings.shared.fakeRatingStars),
+                stars: Int64(WewPagramSettings.shared.fakeRatingStars),
+                nextLevelStars: nil
+            )
+            self.currentPendingStarRating = nil
+        } else if let cachedData = cachedData as? CachedUserData, let starRating = cachedData.starRating {
             self.currentStarRating = starRating
             self.currentPendingStarRating = cachedData.pendingStarRating
         } else {
