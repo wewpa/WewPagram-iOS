@@ -261,10 +261,17 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
             interaction.openSettings(.premium)
         }))
     }
+    let wewFakeStars = WewPagramSettings.shared.fakeRatingEnabled ? WewPagramSettings.shared.fakeRatingStars : nil
     if let starsState = data.starsState {
-        if !isPremiumDisabled || abs(starsState.balance.value) > 0 {
+        if !isPremiumDisabled || abs(starsState.balance.value) > 0 || wewFakeStars != nil {
             let balanceText: NSAttributedString
-            if abs(starsState.balance.value) > 0 {
+            if let wewFakeStars {
+                let formattedLabel = formatStarsAmountText(StarsAmount(value: Int64(wewFakeStars), nanos: 0), dateTimeFormat: presentationData.dateTimeFormat)
+                let smallLabelFont = Font.regular(floor(presentationData.listsFontSize.itemListBaseFontSize / 17.0 * 13.0))
+                let labelFont = Font.regular(presentationData.listsFontSize.itemListBaseFontSize)
+                let labelColor = presentationData.theme.list.itemSecondaryTextColor
+                balanceText = tonAmountAttributedString(formattedLabel, integralFont: labelFont, fractionalFont: smallLabelFont, color: labelColor, decimalSeparator: presentationData.dateTimeFormat.decimalSeparator)
+            } else if abs(starsState.balance.value) > 0 {
                 let formattedLabel = formatStarsAmountText(starsState.balance, dateTimeFormat: presentationData.dateTimeFormat)
                 let smallLabelFont = Font.regular(floor(presentationData.listsFontSize.itemListBaseFontSize / 17.0 * 13.0))
                 let labelFont = Font.regular(presentationData.listsFontSize.itemListBaseFontSize)
@@ -277,6 +284,17 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
                 interaction.openSettings(.stars)
             }))
         }
+    } else if let wewFakeStars {
+        // Real starsState is nil (account never touched Stars) — still show
+        // the row so the fake balance has somewhere to appear.
+        let formattedLabel = formatStarsAmountText(StarsAmount(value: Int64(wewFakeStars), nanos: 0), dateTimeFormat: presentationData.dateTimeFormat)
+        let smallLabelFont = Font.regular(floor(presentationData.listsFontSize.itemListBaseFontSize / 17.0 * 13.0))
+        let labelFont = Font.regular(presentationData.listsFontSize.itemListBaseFontSize)
+        let labelColor = presentationData.theme.list.itemSecondaryTextColor
+        let balanceText = tonAmountAttributedString(formattedLabel, integralFont: labelFont, fractionalFont: smallLabelFont, color: labelColor, decimalSeparator: presentationData.dateTimeFormat.decimalSeparator)
+        items[.payment]!.append(PeerInfoScreenDisclosureItem(id: 102, label: .attributedText(balanceText), text: presentationData.strings.Settings_Stars, icon: PresentationResourcesSettings.stars, action: {
+            interaction.openSettings(.stars)
+        }))
     }
     if let tonState = data.tonState {
         if abs(tonState.balance.value) > 0 {
@@ -456,10 +474,7 @@ func settingsEditingItems(data: PeerInfoScreenData?, state: PeerInfoState, conte
         }))
     }
     var username = ""
-    let wewSettings = WewPagramSettings.shared
-    if let fakeUsername = wewSettings.fakeUsername, !fakeUsername.isEmpty {
-        username = "@\(fakeUsername)"
-    } else if let addressName = data.peer?.addressName, !addressName.isEmpty {
+    if let addressName = data.peer?.addressName, !addressName.isEmpty {
         username = "@\(addressName)"
     }
     items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemUsername, label: .text(username), text: presentationData.strings.Settings_Username, icon: PresentationResourcesSettings.email, action: {

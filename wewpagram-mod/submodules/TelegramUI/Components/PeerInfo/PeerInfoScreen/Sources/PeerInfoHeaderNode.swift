@@ -1240,6 +1240,10 @@ final class PeerInfoHeaderNode: ASDisplayNode {
 
                 var subtitle = wewSettings.fakePhoneNumber ?? formatPhoneNumber(context: self.context, number: user.phone ?? "")
 
+                if let mainUsername = user.addressName, !mainUsername.isEmpty {
+                    subtitle = "\(subtitle) • @\(mainUsername)"
+                }
+
                 if let nftUsername = wewSettings.fakeNftUsername, !nftUsername.isEmpty {
                     if let nftPrice = wewSettings.fakeNftPrice, !nftPrice.isEmpty {
                         subtitle = "\(subtitle) • @\(nftUsername) (\(nftPrice))"

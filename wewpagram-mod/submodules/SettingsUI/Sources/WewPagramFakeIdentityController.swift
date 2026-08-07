@@ -10,7 +10,6 @@ import AccountContext
 
 private final class WewPagramFakeIdentityControllerArguments {
     let updateFakePhoneNumber: (String) -> Void
-    let updateFakeUsername: (String) -> Void
     let updateFakeNftUsername: (String) -> Void
     let updateFakeNftPrice: (String) -> Void
     let toggleFakeRating: (Bool) -> Void
@@ -19,7 +18,6 @@ private final class WewPagramFakeIdentityControllerArguments {
 
     init(
         updateFakePhoneNumber: @escaping (String) -> Void,
-        updateFakeUsername: @escaping (String) -> Void,
         updateFakeNftUsername: @escaping (String) -> Void,
         updateFakeNftPrice: @escaping (String) -> Void,
         toggleFakeRating: @escaping (Bool) -> Void,
@@ -27,7 +25,6 @@ private final class WewPagramFakeIdentityControllerArguments {
         updateFakeRatingStars: @escaping (String) -> Void
     ) {
         self.updateFakePhoneNumber = updateFakePhoneNumber
-        self.updateFakeUsername = updateFakeUsername
         self.updateFakeNftUsername = updateFakeNftUsername
         self.updateFakeNftPrice = updateFakeNftPrice
         self.toggleFakeRating = toggleFakeRating
@@ -49,7 +46,6 @@ private struct WewPagramFakeIdentityState: Equatable {
 private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
     enum StableId: Hashable {
         case phoneNumber
-        case username
         case nftUsername
         case nftPrice
         case identityFooter
@@ -61,7 +57,6 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
     }
 
     case phoneNumber(String)
-    case username(String)
     case nftUsername(String)
     case nftPrice(String)
     case identityFooter(String)
@@ -73,7 +68,7 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
 
     var section: ItemListSectionId {
         switch self {
-        case .phoneNumber, .username, .nftUsername, .nftPrice, .identityFooter:
+        case .phoneNumber, .nftUsername, .nftPrice, .identityFooter:
             return 0
         case .ratingHeader, .ratingToggle, .ratingLevel, .ratingStars, .ratingFooter:
             return 1
@@ -83,7 +78,6 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
     var stableId: StableId {
         switch self {
         case .phoneNumber: return .phoneNumber
-        case .username: return .username
         case .nftUsername: return .nftUsername
         case .nftPrice: return .nftPrice
         case .identityFooter: return .identityFooter
@@ -98,22 +92,20 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
     private var sortIndex: Int {
         switch self {
         case .phoneNumber: return 0
-        case .username: return 1
-        case .nftUsername: return 2
-        case .nftPrice: return 3
-        case .identityFooter: return 4
-        case .ratingHeader: return 5
-        case .ratingToggle: return 6
-        case .ratingLevel: return 7
-        case .ratingStars: return 8
-        case .ratingFooter: return 9
+        case .nftUsername: return 1
+        case .nftPrice: return 2
+        case .identityFooter: return 3
+        case .ratingHeader: return 4
+        case .ratingToggle: return 5
+        case .ratingLevel: return 6
+        case .ratingStars: return 7
+        case .ratingFooter: return 8
         }
     }
 
     static func ==(lhs: WewPagramFakeIdentityEntry, rhs: WewPagramFakeIdentityEntry) -> Bool {
         switch lhs {
         case let .phoneNumber(v): if case .phoneNumber(v) = rhs { return true } else { return false }
-        case let .username(v): if case .username(v) = rhs { return true } else { return false }
         case let .nftUsername(v): if case .nftUsername(v) = rhs { return true } else { return false }
         case let .nftPrice(v): if case .nftPrice(v) = rhs { return true } else { return false }
         case let .identityFooter(v): if case .identityFooter(v) = rhs { return true } else { return false }
@@ -134,8 +126,6 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         switch self {
         case let .phoneNumber(value):
             return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Номер"), text: value, placeholder: "Настоящий номер", type: .regular(capitalization: false, autocorrection: false), clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakePhoneNumber($0) }, action: {})
-        case let .username(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Юзернейм"), text: value, placeholder: "Настоящий юзернейм", type: .username, clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakeUsername($0) }, action: {})
         case let .nftUsername(value):
             return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "NFT-юзернейм"), text: value, placeholder: "Не задан", type: .username, clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakeNftUsername($0) }, action: {})
         case let .nftPrice(value):
@@ -178,10 +168,6 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
             settings.fakePhoneNumber = value.isEmpty ? nil : value
             updateState { var s = $0; s.fakePhoneNumber = value; return s }
         },
-        updateFakeUsername: { value in
-            settings.fakeUsername = value.isEmpty ? nil : value
-            updateState { var s = $0; s.fakeUsername = value; return s }
-        },
         updateFakeNftUsername: { value in
             settings.fakeNftUsername = value.isEmpty ? nil : value
             updateState { var s = $0; s.fakeNftUsername = value; return s }
@@ -211,7 +197,6 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
     |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
         var entries: [WewPagramFakeIdentityEntry] = [
             .phoneNumber(state.fakePhoneNumber),
-            .username(state.fakeUsername),
             .nftUsername(state.fakeNftUsername),
             .nftPrice(state.fakeNftPrice),
             .identityFooter("Эти поля меняют только то, что ты видишь в своём профиле в приложении. Собеседники видят твои настоящие данные — изменения никуда не отправляются."),
