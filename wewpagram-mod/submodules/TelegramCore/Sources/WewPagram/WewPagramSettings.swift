@@ -29,12 +29,12 @@ public final class WewPagramSettings {
 
         static let fakePhoneNumber   = "WewPagram.fakePhoneNumber"
         static let fakeUsername      = "WewPagram.fakeUsername"
-        static let fakeNftUsername   = "WewPagram.fakeNftUsername"
-        static let fakeNftPrice      = "WewPagram.fakeNftPrice"
+        static let fakeNftEntries    = "WewPagram.fakeNftEntries"
 
         static let fakeRatingEnabled = "WewPagram.fakeRatingEnabled"
         static let fakeRatingLevel   = "WewPagram.fakeRatingLevel"
         static let fakeRatingStars   = "WewPagram.fakeRatingStars"
+        static let injectedFakeStars = "WewPagram.injectedFakeStars"
     }
 
     private init() {
@@ -125,8 +125,7 @@ public final class WewPagramSettings {
     private static let managedKeys: [String] = ghostSubKeys + [
         Keys.fakePhoneNumber,
         Keys.fakeUsername,
-        Keys.fakeNftUsername,
-        Keys.fakeNftPrice,
+        Keys.fakeNftEntries,
     ]
 
     // Wipe every WewPagram-managed key back to its default (unset/false).
@@ -145,8 +144,7 @@ public final class WewPagramSettings {
         }
         if let v = self.fakePhoneNumber { dict[Keys.fakePhoneNumber] = v }
         if let v = self.fakeUsername    { dict[Keys.fakeUsername]    = v }
-        if let v = self.fakeNftUsername { dict[Keys.fakeNftUsername] = v }
-        if let v = self.fakeNftPrice    { dict[Keys.fakeNftPrice]    = v }
+        dict[Keys.fakeNftEntries] = self.fakeNftEntries.map { ["username": $0.username, "price": $0.price] }
         return dict
     }
 
@@ -170,11 +168,18 @@ public final class WewPagramSettings {
                 applied += 1
             }
         }
-        for key in [Keys.fakePhoneNumber, Keys.fakeUsername, Keys.fakeNftUsername, Keys.fakeNftPrice] {
+        for key in [Keys.fakePhoneNumber, Keys.fakeUsername] {
             if let value = snapshot[key] as? String, !value.isEmpty {
                 self.defaults.set(value, forKey: key)
                 applied += 1
             }
+        }
+        if let raw = snapshot[Keys.fakeNftEntries] as? [[String: String]] {
+            self.fakeNftEntries = raw.compactMap { entry in
+                guard let username = entry["username"], !username.isEmpty else { return nil }
+                return FakeNftEntry(username: username, price: entry["price"] ?? "")
+            }
+            applied += 1
         }
         return applied > 0
     }
@@ -190,14 +195,46 @@ public final class WewPagramSettings {
         set { self.defaults.set(newValue, forKey: Keys.fakeUsername) }
     }
 
-    public var fakeNftUsername: String? {
-        get { self.defaults.string(forKey: Keys.fakeNftUsername) }
-        set { self.defaults.set(newValue, forKey: Keys.fakeNftUsername) }
+    // MARK: - Fake NFT (collectible) usernames — additive, shown only on the
+    // read-only "My Profile" screen, alongside real additional usernames.
+    public struct FakeNftEntry: Equatable {
+        public var username: String
+        public var price: String
+
+        public init(username: String, price: String) {
+            self.username = username
+            self.price = price
+        }
     }
 
-    public var fakeNftPrice: String? {
-        get { self.defaults.string(forKey: Keys.fakeNftPrice) }
-        set { self.defaults.set(newValue, forKey: Keys.fakeNftPrice) }
+    public var fakeNftEntries: [FakeNftEntry] {
+        get {
+            guard let raw = self.defaults.array(forKey: Keys.fakeNftEntries) as? [[String: String]] else {
+                return []
+            }
+            return raw.compactMap { entry in
+                guard let username = entry["username"], !username.isEmpty else { return nil }
+                return FakeNftEntry(username: username, price: entry["price"] ?? "")
+            }
+        }
+        set {
+            let raw = newValue.map { ["username": $0.username, "price": $0.price] }
+            self.defaults.set(raw, forKey: Keys.fakeNftEntries)
+        }
+    }
+
+    public func addFakeNftEntry(username: String, price: String) {
+        guard !username.isEmpty else { return }
+        var entries = self.fakeNftEntries
+        entries.append(FakeNftEntry(username: username, price: price))
+        self.fakeNftEntries = entries
+    }
+
+    public func removeFakeNftEntry(at index: Int) {
+        var entries = self.fakeNftEntries
+        guard entries.indices.contains(index) else { return }
+        entries.remove(at: index)
+        self.fakeNftEntries = entries
     }
 
     // MARK: - Fake profile rating (local-only, cosmetic — never sent to the server)
@@ -210,11 +247,21 @@ public final class WewPagramSettings {
 
     public var fakeRatingLevel: Int {
         get { self.defaults.object(forKey: Keys.fakeRatingLevel) as? Int ?? 1 }
-        set { self.defaults.set(newValue, forKey: Keys.fakeRatingLevel) }
+        set { self.defaults.set(max(0, min(newValue, 999)), forKey: Keys.fakeRatingLevel) }
     }
 
+    // Clamped well below Int32/Int64 formatter edge cases (Telegram's own
+    // Stars amounts are nowhere near this large in practice).
     public var fakeRatingStars: Int {
         get { self.defaults.object(forKey: Keys.fakeRatingStars) as? Int ?? 0 }
-        set { self.defaults.set(newValue, forKey: Keys.fakeRatingStars) }
+        set { self.defaults.set(max(0, min(newValue, 999_999_999)), forKey: Keys.fakeRatingStars) }
+    }
+
+    // Tracks how much fake balance we've already injected into the real
+    // StarsContext, so toggling/editing the fake amount can add just the
+    // delta instead of compounding on every change.
+    public var injectedFakeStars: Int {
+        get { self.defaults.object(forKey: Keys.injectedFakeStars) as? Int ?? 0 }
+        set { self.defaults.set(newValue, forKey: Keys.injectedFakeStars) }
     }
 }

@@ -1244,14 +1244,6 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                     subtitle = "\(subtitle) • @\(mainUsername)"
                 }
 
-                if let nftUsername = wewSettings.fakeNftUsername, !nftUsername.isEmpty {
-                    if let nftPrice = wewSettings.fakeNftPrice, !nftPrice.isEmpty {
-                        subtitle = "\(subtitle) • @\(nftUsername) (\(nftPrice))"
-                    } else {
-                        subtitle = "\(subtitle) • @\(nftUsername)"
-                    }
-                }
-
                 subtitleStringText = subtitle
                 subtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(17.0), color: .white)
                 smallSubtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(16.0), color: .white, shadowColor: titleShadowColor)
