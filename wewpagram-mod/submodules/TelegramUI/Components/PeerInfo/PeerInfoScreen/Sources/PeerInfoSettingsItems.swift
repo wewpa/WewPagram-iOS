@@ -38,7 +38,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         items[section] = []
     }
 
-    items[.wewpagram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .none, text: "WewPagram", icon: nil, action: {
+    items[.wewpagram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .none, text: "WewPagram", icon: WewPagramIcon.rowIcon, action: {
         interaction.openSettings(.wewpagram)
     }))
     

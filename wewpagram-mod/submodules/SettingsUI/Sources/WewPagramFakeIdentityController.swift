@@ -16,6 +16,55 @@ private func wewApplyStarsDelta(context: AccountContext, settings: WewPagramSett
     settings.injectedFakeStars = target
 }
 
+// Adds a gift to the user's own profile gift collection, purely locally.
+// We reuse a real gift's artwork/sticker (there's no way to fabricate a
+// convincing custom animated sticker), just marked as ours with no real
+// purchase reference — insertStarGifts writes through to the same Postbox
+// cache the real "My Profile" gifts grid reads from, so it shows up there.
+private func wewAddFakeGift(context: AccountContext, completion: @escaping (Bool) -> Void) {
+    let _ = (context.engine.payments.cachedStarGifts()
+    |> take(1)
+    |> deliverOnMainQueue).start(next: { gifts in
+        guard let gifts, let pick = gifts.randomElement() else {
+            completion(false)
+            return
+        }
+        let fakeEntry = ProfileGiftsContext.State.StarGift(
+            gift: pick,
+            reference: nil,
+            fromPeer: nil,
+            date: Int32(Date().timeIntervalSince1970),
+            text: nil,
+            entities: nil,
+            nameHidden: false,
+            savedToProfile: true,
+            pinnedToTop: false,
+            convertStars: nil,
+            canUpgrade: false,
+            canExportDate: nil,
+            upgradeStars: nil,
+            transferStars: nil,
+            canTransferDate: nil,
+            canResaleDate: nil,
+            collectionIds: nil,
+            prepaidUpgradeHash: nil,
+            upgradeSeparate: false,
+            dropOriginalDetailsStars: nil,
+            number: nil,
+            isRefunded: false,
+            canCraftAt: nil
+        )
+        let giftsContext = ProfileGiftsContext(account: context.account, peerId: context.account.peerId)
+        giftsContext.insertStarGifts(gifts: [fakeEntry])
+        // insertStarGifts writes to Postbox asynchronously — keep this
+        // context alive a moment so ARC doesn't tear it down mid-write.
+        Queue.mainQueue().after(2.0) {
+            withExtendedLifetime(giftsContext) {}
+        }
+        completion(true)
+    })
+}
+
 private final class WewPagramFakeIdentityControllerArguments {
     let updateFakePhoneNumber: (String) -> Void
     let updateNewNftUsername: (String) -> Void
@@ -25,6 +74,7 @@ private final class WewPagramFakeIdentityControllerArguments {
     let toggleFakeRating: (Bool) -> Void
     let updateFakeRatingLevel: (String) -> Void
     let updateFakeRatingStars: (String) -> Void
+    let addGift: () -> Void
 
     init(
         updateFakePhoneNumber: @escaping (String) -> Void,
@@ -34,7 +84,8 @@ private final class WewPagramFakeIdentityControllerArguments {
         removeNftEntry: @escaping (Int) -> Void,
         toggleFakeRating: @escaping (Bool) -> Void,
         updateFakeRatingLevel: @escaping (String) -> Void,
-        updateFakeRatingStars: @escaping (String) -> Void
+        updateFakeRatingStars: @escaping (String) -> Void,
+        addGift: @escaping () -> Void
     ) {
         self.updateFakePhoneNumber = updateFakePhoneNumber
         self.updateNewNftUsername = updateNewNftUsername
@@ -44,6 +95,7 @@ private final class WewPagramFakeIdentityControllerArguments {
         self.toggleFakeRating = toggleFakeRating
         self.updateFakeRatingLevel = updateFakeRatingLevel
         self.updateFakeRatingStars = updateFakeRatingStars
+        self.addGift = addGift
     }
 }
 
@@ -72,6 +124,9 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case ratingLevel
         case ratingStars
         case ratingFooter
+        case giftsHeader
+        case giftsAddButton
+        case giftsFooter
     }
 
     case phoneNumber(String)
@@ -87,6 +142,9 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
     case ratingLevel(String)
     case ratingStars(String)
     case ratingFooter(String)
+    case giftsHeader(String)
+    case giftsAddButton
+    case giftsFooter(String)
 
     var section: ItemListSectionId {
         switch self {
@@ -96,6 +154,8 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
             return 1
         case .ratingHeader, .ratingToggle, .ratingLevel, .ratingStars, .ratingFooter:
             return 2
+        case .giftsHeader, .giftsAddButton, .giftsFooter:
+            return 3
         }
     }
 
@@ -114,6 +174,9 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case .ratingLevel: return .ratingLevel
         case .ratingStars: return .ratingStars
         case .ratingFooter: return .ratingFooter
+        case .giftsHeader: return .giftsHeader
+        case .giftsAddButton: return .giftsAddButton
+        case .giftsFooter: return .giftsFooter
         }
     }
 
@@ -132,6 +195,9 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case .ratingLevel: return 1006
         case .ratingStars: return 1007
         case .ratingFooter: return 1008
+        case .giftsHeader: return 1009
+        case .giftsAddButton: return 1010
+        case .giftsFooter: return 1011
         }
     }
 
@@ -150,6 +216,9 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case let .ratingLevel(v): if case .ratingLevel(v) = rhs { return true } else { return false }
         case let .ratingStars(v): if case .ratingStars(v) = rhs { return true } else { return false }
         case let .ratingFooter(v): if case .ratingFooter(v) = rhs { return true } else { return false }
+        case let .giftsHeader(v): if case .giftsHeader(v) = rhs { return true } else { return false }
+        case .giftsAddButton: if case .giftsAddButton = rhs { return true } else { return false }
+        case let .giftsFooter(v): if case .giftsFooter(v) = rhs { return true } else { return false }
         }
     }
 
@@ -190,6 +259,14 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case let .ratingStars(value):
             return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Звёзды"), text: value, placeholder: "0", type: .number, clearType: .always, sectionId: self.section, textUpdated: { arguments.updateFakeRatingStars($0) }, action: {})
         case let .ratingFooter(text):
+            return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
+        case let .giftsHeader(text):
+            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
+        case .giftsAddButton:
+            return ItemListActionItem(presentationData: presentationData, title: "Добавить подарок", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.addGift()
+            })
+        case let .giftsFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         }
     }
@@ -258,6 +335,16 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
             settings.fakeRatingStars = Int(value) ?? 0
             wewApplyStarsDelta(context: context, settings: settings)
             updateState { var s = $0; s.fakeRatingStars = value; return s }
+        },
+        addGift: {
+            wewAddFakeGift(context: context) { success in
+                guard success else { return }
+                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: "Подарок добавлен. Если не появился в профиле сразу — зайди в My Profile ещё раз.", actions: [
+                    TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                ])
+                presentControllerImpl?(alert)
+            }
         }
     )
 
@@ -285,6 +372,9 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
             entries.append(.ratingStars(state.fakeRatingStars))
         }
         entries.append(.ratingFooter("Подменяет бейдж рейтинга и баланс Stars в списке Settings. Тоже только локально."))
+        entries.append(.giftsHeader("ПОДАРКИ"))
+        entries.append(.giftsAddButton)
+        entries.append(.giftsFooter("Добавляет случайный настоящий подарок в твой профиль (My Profile → Gifts), без реальной траты звёзд. Открой My Profile заново, если не появился сразу."))
 
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Профиль"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks)
