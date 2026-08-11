@@ -35,6 +35,7 @@ public final class WewPagramSettings {
         static let fakeRatingLevel   = "WewPagram.fakeRatingLevel"
         static let fakeRatingStars   = "WewPagram.fakeRatingStars"
         static let injectedFakeStars = "WewPagram.injectedFakeStars"
+        static let fakeGiftsData     = "WewPagram.fakeGiftsData"
     }
 
     private init() {
@@ -263,5 +264,20 @@ public final class WewPagramSettings {
     public var injectedFakeStars: Int {
         get { self.defaults.object(forKey: Keys.injectedFakeStars) as? Int ?? 0 }
         set { self.defaults.set(newValue, forKey: Keys.injectedFakeStars) }
+    }
+
+    // Raw JSON-encoded ProfileGiftsContext.State.StarGift blobs (built once
+    // when the user taps "Добавить подарок", reusing a real gift's artwork).
+    // Decoded and merged into the displayed gift grid at render time — never
+    // touches the real synced Postbox state, so nothing overwrites it.
+    public var fakeGiftsData: [Data] {
+        get { self.defaults.array(forKey: Keys.fakeGiftsData) as? [Data] ?? [] }
+        set { self.defaults.set(newValue, forKey: Keys.fakeGiftsData) }
+    }
+
+    public func addFakeGiftData(_ data: Data) {
+        var current = self.fakeGiftsData
+        current.append(data)
+        self.fakeGiftsData = current
     }
 }

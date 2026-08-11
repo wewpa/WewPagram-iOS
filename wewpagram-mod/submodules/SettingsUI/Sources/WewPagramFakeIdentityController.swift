@@ -16,11 +16,11 @@ private func wewApplyStarsDelta(context: AccountContext, settings: WewPagramSett
     settings.injectedFakeStars = target
 }
 
-// Adds a gift to the user's own profile gift collection, purely locally.
-// We reuse a real gift's artwork/sticker (there's no way to fabricate a
-// convincing custom animated sticker), just marked as ours with no real
-// purchase reference — insertStarGifts writes through to the same Postbox
-// cache the real "My Profile" gifts grid reads from, so it shows up there.
+// Picks a real gift from the catalog and stores an encoded fake profile-gift
+// entry in WewPagramSettings. We deliberately do NOT touch the real synced
+// ProfileGiftsContext/Postbox state — any real network sync would just wipe
+// it out again. Instead this gets merged into the displayed grid at render
+// time (see the GiftsListView.swift patch).
 private func wewAddFakeGift(context: AccountContext, completion: @escaping (Bool) -> Void) {
     let _ = (context.engine.payments.cachedStarGifts()
     |> take(1)
@@ -54,13 +54,11 @@ private func wewAddFakeGift(context: AccountContext, completion: @escaping (Bool
             isRefunded: false,
             canCraftAt: nil
         )
-        let giftsContext = ProfileGiftsContext(account: context.account, peerId: context.account.peerId)
-        giftsContext.insertStarGifts(gifts: [fakeEntry])
-        // insertStarGifts writes to Postbox asynchronously — keep this
-        // context alive a moment so ARC doesn't tear it down mid-write.
-        Queue.mainQueue().after(2.0) {
-            withExtendedLifetime(giftsContext) {}
+        guard let encoded = try? JSONEncoder().encode(fakeEntry) else {
+            completion(false)
+            return
         }
+        WewPagramSettings.shared.addFakeGiftData(encoded)
         completion(true)
     })
 }
