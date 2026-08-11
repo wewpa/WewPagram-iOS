@@ -16,51 +16,42 @@ private func wewApplyStarsDelta(context: AccountContext, settings: WewPagramSett
     settings.injectedFakeStars = target
 }
 
-// Picks a real gift from the catalog and stores an encoded fake profile-gift
-// entry in WewPagramSettings. We deliberately do NOT touch the real synced
-// ProfileGiftsContext/Postbox state — any real network sync would just wipe
-// it out again. Instead this gets merged into the displayed grid at render
-// time (see the GiftsListView.swift patch).
-private func wewAddFakeGift(context: AccountContext, completion: @escaping (Bool) -> Void) {
-    let _ = (context.engine.payments.cachedStarGifts()
-    |> take(1)
-    |> deliverOnMainQueue).start(next: { gifts in
-        guard let gifts, let pick = gifts.randomElement() else {
-            completion(false)
-            return
-        }
-        let fakeEntry = ProfileGiftsContext.State.StarGift(
-            gift: pick,
-            reference: nil,
-            fromPeer: nil,
-            date: Int32(Date().timeIntervalSince1970),
-            text: nil,
-            entities: nil,
-            nameHidden: false,
-            savedToProfile: true,
-            pinnedToTop: false,
-            convertStars: nil,
-            canUpgrade: false,
-            canExportDate: nil,
-            upgradeStars: nil,
-            transferStars: nil,
-            canTransferDate: nil,
-            canResaleDate: nil,
-            collectionIds: nil,
-            prepaidUpgradeHash: nil,
-            upgradeSeparate: false,
-            dropOriginalDetailsStars: nil,
-            number: nil,
-            isRefunded: false,
-            canCraftAt: nil
-        )
-        guard let encoded = try? JSONEncoder().encode(fakeEntry) else {
-            completion(false)
-            return
-        }
-        WewPagramSettings.shared.addFakeGiftData(encoded)
-        completion(true)
-    })
+// Encodes a chosen real gift and stores it in WewPagramSettings. We
+// deliberately do NOT touch the real synced ProfileGiftsContext/Postbox
+// state — any real network sync would just wipe it out again. Instead this
+// gets merged into the displayed grid at render time (GiftsListView.swift).
+private func wewSaveFakeGift(_ pick: StarGift, completion: @escaping (Bool) -> Void) {
+    let fakeEntry = ProfileGiftsContext.State.StarGift(
+        gift: pick,
+        reference: nil,
+        fromPeer: nil,
+        date: Int32(Date().timeIntervalSince1970),
+        text: nil,
+        entities: nil,
+        nameHidden: false,
+        savedToProfile: true,
+        pinnedToTop: false,
+        convertStars: nil,
+        canUpgrade: false,
+        canExportDate: nil,
+        upgradeStars: nil,
+        transferStars: nil,
+        canTransferDate: nil,
+        canResaleDate: nil,
+        collectionIds: nil,
+        prepaidUpgradeHash: nil,
+        upgradeSeparate: false,
+        dropOriginalDetailsStars: nil,
+        number: nil,
+        isRefunded: false,
+        canCraftAt: nil
+    )
+    guard let encoded = try? JSONEncoder().encode(fakeEntry) else {
+        completion(false)
+        return
+    }
+    WewPagramSettings.shared.addFakeGiftData(encoded)
+    completion(true)
 }
 
 private final class WewPagramFakeIdentityControllerArguments {
@@ -261,7 +252,7 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case let .giftsHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case .giftsAddButton:
-            return ItemListActionItem(presentationData: presentationData, title: "Добавить подарок", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+            return ItemListActionItem(presentationData: presentationData, title: "Выбрать подарок", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 arguments.addGift()
             })
         case let .giftsFooter(text):
@@ -288,6 +279,7 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
     }
 
     var presentControllerImpl: ((ViewController) -> Void)?
+    var pushControllerImpl: ((ViewController) -> Void)?
 
     wewApplyStarsDelta(context: context, settings: settings)
 
@@ -335,14 +327,17 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
             updateState { var s = $0; s.fakeRatingStars = value; return s }
         },
         addGift: {
-            wewAddFakeGift(context: context) { success in
-                guard success else { return }
-                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-                let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: "Подарок добавлен. Если не появился в профиле сразу — зайди в My Profile ещё раз.", actions: [
-                    TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
-                ])
-                presentControllerImpl?(alert)
+            let picker = wewpagramGiftPickerController(context: context) { pickedGift in
+                wewSaveFakeGift(pickedGift) { success in
+                    guard success else { return }
+                    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                    let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: "Подарок добавлен. Если не появился в профиле сразу — зайди в My Profile ещё раз.", actions: [
+                        TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                    ])
+                    presentControllerImpl?(alert)
+                }
             }
+            pushControllerImpl?(picker)
         }
     )
 
@@ -372,7 +367,7 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
         entries.append(.ratingFooter("Подменяет бейдж рейтинга и баланс Stars в списке Settings. Тоже только локально."))
         entries.append(.giftsHeader("ПОДАРКИ"))
         entries.append(.giftsAddButton)
-        entries.append(.giftsFooter("Добавляет случайный настоящий подарок в твой профиль (My Profile → Gifts), без реальной траты звёзд. Открой My Profile заново, если не появился сразу."))
+        entries.append(.giftsFooter("Позволяет выбрать настоящий подарок из каталога и добавить в твой профиль (My Profile → Gifts), без реальной траты звёзд. Открой My Profile заново, если не появился сразу."))
 
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Профиль"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks)
@@ -383,6 +378,9 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
     let controller = ItemListController(context: context, state: signal)
     presentControllerImpl = { [weak controller] c in
         controller?.present(c, in: .window(.root))
+    }
+    pushControllerImpl = { [weak controller] c in
+        controller?.push(c)
     }
     return controller
 }
