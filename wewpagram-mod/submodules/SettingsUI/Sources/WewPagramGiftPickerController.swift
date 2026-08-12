@@ -99,9 +99,43 @@ private struct ArgumentsPlaceholder {}
 // those instead — a nicer-looking "upgraded" result when available.
 // Falls back to the plain picked gift if there's nothing on resale, or if
 // the pick was already unique.
+// Reuses a real gift's artwork/attributes but rewrites ownership to the
+// current user, so it reads as "your" gift rather than whoever actually
+// owns it on the real server. Generic (non-unique) gifts have no owner
+// field to change, so they pass through unmodified.
+private func wewClaimOwnership(context: AccountContext, of gift: StarGift) -> StarGift {
+    guard case let .unique(unique) = gift else {
+        return gift
+    }
+    let claimed = StarGift.UniqueGift(
+        id: unique.id,
+        giftId: unique.giftId,
+        title: unique.title,
+        number: unique.number,
+        slug: unique.slug,
+        owner: .peerId(context.account.peerId),
+        attributes: unique.attributes,
+        availability: unique.availability,
+        giftAddress: unique.giftAddress,
+        resellAmounts: unique.resellAmounts,
+        resellForTonOnly: unique.resellForTonOnly,
+        releasedBy: unique.releasedBy,
+        valueAmount: unique.valueAmount,
+        valueCurrency: unique.valueCurrency,
+        valueUsdAmount: unique.valueUsdAmount,
+        flags: unique.flags,
+        themePeerId: unique.themePeerId,
+        peerColor: unique.peerColor,
+        hostPeerId: unique.hostPeerId,
+        minOfferStars: unique.minOfferStars,
+        craftChancePermille: unique.craftChancePermille
+    )
+    return .unique(claimed)
+}
+
 private func wewFindUpgradedVariant(context: AccountContext, of picked: StarGift, completion: @escaping (StarGift) -> Void) {
     guard case let .generic(g) = picked else {
-        completion(picked)
+        completion(wewClaimOwnership(context: context, of: picked))
         return
     }
     let resaleContext = ResaleGiftsContext(account: context.account, giftId: g.id, forCrafting: false)
@@ -109,7 +143,7 @@ private func wewFindUpgradedVariant(context: AccountContext, of picked: StarGift
     let finish: (StarGift) -> Void = { result in
         if !didComplete {
             didComplete = true
-            completion(result)
+            completion(wewClaimOwnership(context: context, of: result))
         }
     }
     let disposable = MetaDisposable()

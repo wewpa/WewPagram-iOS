@@ -35,7 +35,7 @@ private struct WewDeletedMessageEntry: ItemListNodeEntry {
     }
 }
 
-public func wewpagramDeletedMessagesController(context: AccountContext) -> ViewController {
+public func wewpagramDeletedMessagesController(context: AccountContext, filterPeerId: EnginePeer.Id? = nil) -> ViewController {
     let updatePromise = ValuePromise<Int>(0, ignoreRepeated: false)
     var presentControllerImpl: ((ViewController) -> Void)?
 
@@ -44,7 +44,10 @@ public func wewpagramDeletedMessagesController(context: AccountContext) -> ViewC
         updatePromise.get()
     )
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let records = WewPagramSettings.shared.deletedMessages()
+        var records = WewPagramSettings.shared.deletedMessages()
+        if let filterPeerId {
+            records = records.filter { $0.peerId == filterPeerId.toInt64() }
+        }
         var entries: [WewDeletedMessageEntry] = []
         for (index, record) in records.enumerated() {
             entries.append(WewDeletedMessageEntry(index: index, record: record))
