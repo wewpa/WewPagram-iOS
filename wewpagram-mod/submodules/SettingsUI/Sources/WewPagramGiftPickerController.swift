@@ -67,8 +67,11 @@ public func wewpagramGiftPickerController(context: AccountContext, onPicked: @es
             entries.append(WewPagramGiftPickerEntry(index: index, title: title, priceText: priceText, action: {
                 let current = latestGifts.with { $0 }
                 guard current.indices.contains(index) else { return }
-                onPicked(current[index])
+                let picked = current[index]
                 dismissImpl?()
+                wewFindUpgradedVariant(context: context, of: picked) { resolved in
+                    onPicked(resolved)
+                }
             }))
         }
 
@@ -88,3 +91,43 @@ public func wewpagramGiftPickerController(context: AccountContext, onPicked: @es
 // ItemListController requires a non-nil "arguments" payload even when the
 // entries close over their own actions directly (as above) and don't need it.
 private struct ArgumentsPlaceholder {}
+
+// Real gift IDs only make sense for .generic entries (catalog items) —
+// unique gifts are already someone's specific instance. When the picked
+// gift is generic, check if it has any active resale listings (real,
+// already-upgraded/NFT instances of the same gift type) and use one of
+// those instead — a nicer-looking "upgraded" result when available.
+// Falls back to the plain picked gift if there's nothing on resale, or if
+// the pick was already unique.
+private func wewFindUpgradedVariant(context: AccountContext, of picked: StarGift, completion: @escaping (StarGift) -> Void) {
+    guard case let .generic(g) = picked else {
+        completion(picked)
+        return
+    }
+    let resaleContext = ResaleGiftsContext(account: context.account, giftId: g.id, forCrafting: false)
+    var didComplete = false
+    let finish: (StarGift) -> Void = { result in
+        if !didComplete {
+            didComplete = true
+            completion(result)
+        }
+    }
+    let disposable = MetaDisposable()
+    disposable.set((resaleContext.state
+    |> filter { $0.dataState != .loading }
+    |> take(1)
+    |> deliverOnMainQueue).start(next: { state in
+        if let upgraded = state.gifts.randomElement() {
+            finish(upgraded)
+        } else {
+            finish(picked)
+        }
+    }))
+    // Safety net: if the resale signal never fires a non-loading state for
+    // some reason, don't leave the user stuck — fall back after a short wait.
+    Queue.mainQueue().after(4.0) {
+        finish(picked)
+        disposable.dispose()
+        withExtendedLifetime(resaleContext) {}
+    }
+}
