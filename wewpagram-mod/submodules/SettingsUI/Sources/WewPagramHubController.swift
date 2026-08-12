@@ -11,6 +11,7 @@ import AccountContext
 private final class WewPagramHubControllerArguments {
     let openGhostMode: () -> Void
     let openFakeIdentity: () -> Void
+    let openDeletedMessages: () -> Void
     let exportSettings: () -> Void
     let importSettings: () -> Void
     let resetSettings: () -> Void
@@ -18,12 +19,14 @@ private final class WewPagramHubControllerArguments {
     init(
         openGhostMode: @escaping () -> Void,
         openFakeIdentity: @escaping () -> Void,
+        openDeletedMessages: @escaping () -> Void,
         exportSettings: @escaping () -> Void,
         importSettings: @escaping () -> Void,
         resetSettings: @escaping () -> Void
     ) {
         self.openGhostMode = openGhostMode
         self.openFakeIdentity = openFakeIdentity
+        self.openDeletedMessages = openDeletedMessages
         self.exportSettings = exportSettings
         self.importSettings = importSettings
         self.resetSettings = resetSettings
@@ -42,6 +45,7 @@ private enum WewPagramHubEntry: ItemListNodeEntry {
     enum StableId: Hashable {
         case ghostMode
         case fakeIdentity
+        case deletedMessages
         case backupHeader
         case exportSettings
         case importSettings
@@ -53,6 +57,7 @@ private enum WewPagramHubEntry: ItemListNodeEntry {
 
     case ghostMode
     case fakeIdentity
+    case deletedMessages
     case backupHeader(String)
     case exportSettings
     case importSettings
@@ -63,7 +68,7 @@ private enum WewPagramHubEntry: ItemListNodeEntry {
 
     var section: ItemListSectionId {
         switch self {
-        case .ghostMode, .fakeIdentity:                                  return WewPagramHubSection.tools.rawValue
+        case .ghostMode, .fakeIdentity, .deletedMessages:                return WewPagramHubSection.tools.rawValue
         case .backupHeader, .exportSettings, .importSettings:            return WewPagramHubSection.backup.rawValue
         case .backupFooter:                                              return WewPagramHubSection.backupFooter.rawValue
         case .resetHeader, .resetSettings:                               return WewPagramHubSection.reset.rawValue
@@ -75,6 +80,7 @@ private enum WewPagramHubEntry: ItemListNodeEntry {
         switch self {
         case .ghostMode:        return .ghostMode
         case .fakeIdentity:     return .fakeIdentity
+        case .deletedMessages:  return .deletedMessages
         case .backupHeader:     return .backupHeader
         case .exportSettings:   return .exportSettings
         case .importSettings:   return .importSettings
@@ -89,6 +95,7 @@ private enum WewPagramHubEntry: ItemListNodeEntry {
         switch self {
         case .ghostMode:        return 0
         case .fakeIdentity:     return 1
+        case .deletedMessages:  return 2
         case .backupHeader:     return 100
         case .exportSettings:   return 101
         case .importSettings:   return 102
@@ -103,6 +110,7 @@ private enum WewPagramHubEntry: ItemListNodeEntry {
         switch (lhs, rhs) {
         case (.ghostMode, .ghostMode),
              (.fakeIdentity, .fakeIdentity),
+             (.deletedMessages, .deletedMessages),
              (.exportSettings, .exportSettings),
              (.importSettings, .importSettings),
              (.resetSettings, .resetSettings):
@@ -130,6 +138,10 @@ private enum WewPagramHubEntry: ItemListNodeEntry {
         case .fakeIdentity:
             return ItemListDisclosureItem(presentationData: presentationData, title: "Профиль", label: "", sectionId: self.section, style: .blocks, action: {
                 arguments.openFakeIdentity()
+            })
+        case .deletedMessages:
+            return ItemListDisclosureItem(presentationData: presentationData, title: "Удалённые сообщения", label: "", sectionId: self.section, style: .blocks, action: {
+                arguments.openDeletedMessages()
             })
         case let .backupHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
@@ -202,6 +214,9 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
         },
         openFakeIdentity: {
             pushControllerImpl?(wewpagramFakeIdentityController(context: context))
+        },
+        openDeletedMessages: {
+            pushControllerImpl?(wewpagramDeletedMessagesController(context: context))
         },
         exportSettings: {
             let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -300,6 +315,7 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
         let entries: [WewPagramHubEntry] = [
             .ghostMode,
             .fakeIdentity,
+            .deletedMessages,
             .backupHeader("РЕЗЕРВНАЯ КОПИЯ"),
             .exportSettings,
             .importSettings,

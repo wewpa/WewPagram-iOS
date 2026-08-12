@@ -280,4 +280,53 @@ public final class WewPagramSettings {
         current.append(data)
         self.fakeGiftsData = current
     }
+
+    // MARK: - Deleted messages archive (AyuGram-style: capture before real
+    // deletion happens, show in a separate local-only viewer. We never
+    // interfere with the actual deletion — this is purely additive/read-only
+    // with respect to the real sync pipeline, so it can't break message sync.
+    public struct DeletedMessageRecord: Codable {
+        public var peerId: Int64
+        public var authorId: Int64?
+        public var authorName: String?
+        public var text: String
+        public var timestamp: Int32
+        public var deletedAt: Int32
+
+        public init(peerId: Int64, authorId: Int64?, authorName: String?, text: String, timestamp: Int32, deletedAt: Int32) {
+            self.peerId = peerId
+            self.authorId = authorId
+            self.authorName = authorName
+            self.text = text
+            self.timestamp = timestamp
+            self.deletedAt = deletedAt
+        }
+    }
+
+    private static let maxDeletedMessageRecords = 2000
+
+    public var deletedMessagesData: [Data] {
+        get { self.defaults.array(forKey: "WewPagram.deletedMessages") as? [Data] ?? [] }
+        set { self.defaults.set(newValue, forKey: "WewPagram.deletedMessages") }
+    }
+
+    public func archiveDeletedMessage(_ record: DeletedMessageRecord) {
+        guard !record.text.isEmpty else { return } // nothing worth keeping (pure media, etc — v1 skips these)
+        guard let encoded = try? JSONEncoder().encode(record) else { return }
+        var current = self.deletedMessagesData
+        current.append(encoded)
+        if current.count > Self.maxDeletedMessageRecords {
+            current.removeFirst(current.count - Self.maxDeletedMessageRecords)
+        }
+        self.deletedMessagesData = current
+    }
+
+    public func deletedMessages() -> [DeletedMessageRecord] {
+        let decoder = JSONDecoder()
+        return self.deletedMessagesData.compactMap { try? decoder.decode(DeletedMessageRecord.self, from: $0) }
+    }
+
+    public func clearDeletedMessages() {
+        self.defaults.removeObject(forKey: "WewPagram.deletedMessages")
+    }
 }
