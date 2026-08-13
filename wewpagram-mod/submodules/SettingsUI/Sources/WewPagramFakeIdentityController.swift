@@ -30,7 +30,7 @@ private func wewSaveFakeGift(_ pick: StarGift, completion: @escaping (Bool) -> V
         entities: nil,
         nameHidden: false,
         savedToProfile: true,
-        pinnedToTop: false,
+        pinnedToTop: true,
         convertStars: nil,
         canUpgrade: false,
         canExportDate: nil,
