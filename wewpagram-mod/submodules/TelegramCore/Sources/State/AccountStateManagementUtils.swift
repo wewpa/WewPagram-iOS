@@ -4443,6 +4443,7 @@ func replayFinalState(
                 // WewPagram: archive a copy of each message's content before
                 // it's actually deleted. Purely additive/read-only — the
                 // real deletion below is completely untouched.
+                var wewSyntheticMessages: [StoreMessage] = []
                 for resolvedId in transaction.wewResolveGlobalMessageIds(ids) {
                     if let message = transaction.getMessage(resolvedId), !message.text.isEmpty {
                         WewPagramSettings.shared.archiveDeletedMessage(WewPagramSettings.DeletedMessageRecord(
@@ -4453,7 +4454,36 @@ func replayFinalState(
                             timestamp: message.timestamp,
                             deletedAt: Int32(Date().timeIntervalSince1970)
                         ))
+
+                        // Reuse the same numeric id under the Local namespace
+                        // — the real message at this id is about to be
+                        // deleted below, so there's no collision, and Postbox
+                        // naturally places this at the right chronological
+                        // spot via its own timestamp-based ordering.
+                        let localId = MessageId(peerId: resolvedId.peerId, namespace: Namespaces.Message.Local, id: resolvedId.id)
+                        if transaction.getMessage(localId) == nil {
+                            wewSyntheticMessages.append(StoreMessage(
+                                id: localId,
+                                customStableId: nil,
+                                globallyUniqueId: nil,
+                                groupingKey: nil,
+                                threadId: message.threadId,
+                                timestamp: message.timestamp,
+                                flags: StoreMessageFlags(message.flags),
+                                tags: [],
+                                globalTags: [],
+                                localTags: [],
+                                forwardInfo: nil,
+                                authorId: message.author?.id,
+                                text: message.text,
+                                attributes: [WewDeletedMessageAttribute(deletedAt: Int32(Date().timeIntervalSince1970))],
+                                media: []
+                            ))
+                        }
                     }
+                }
+                if !wewSyntheticMessages.isEmpty {
+                    let _ = transaction.addMessages(wewSyntheticMessages, location: .Random)
                 }
                 var resourceIds: [MediaResourceId] = []
                 transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
