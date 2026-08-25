@@ -8,9 +8,7 @@ import ItemListUI
 import PresentationDataUtils
 import AccountContext
 
-// One row per privacy activity. Each row is an independent toggle backed by
-// a dedicated key in `WewPagramSettings`, so the user can hide only what they
-// want to hide.
+// Privacy activity toggle with clean naming (no dashes, no descriptions)
 private enum GhostToggle: Int, CaseIterable {
     case onlineStatus
     case typing
@@ -23,35 +21,14 @@ private enum GhostToggle: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .onlineStatus:    return "Онлайн-статус"
-        case .typing:          return "Индикатор набора"
-        case .recordingVideo:  return "Запись видеосообщения"
-        case .uploadingVideo:  return "Отправка видео"
-        case .voiceRecording:  return "Запись голосового"
-        case .voiceUploading:  return "Отправка голосового"
-        case .uploadingPhoto:  return "Отправка фото"
+        case .onlineStatus:    return "Онлайн"
+        case .typing:          return "Набор текста"
+        case .recordingVideo:  return "Запись видео"
+        case .uploadingVideo:  return "Загрузка видео"
+        case .voiceRecording:  return "Запись голоса"
+        case .voiceUploading:  return "Загрузка голоса"
+        case .uploadingPhoto:  return "Загрузка фото"
         case .readReceipts:    return "Отчёты о прочтении"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .onlineStatus:
-            return "Всегда показывать себя офлайн — другие не увидят, что вы в сети."
-        case .typing:
-            return "Скрывать «печатает…» в чатах, где вы набираете сообщение."
-        case .recordingVideo:
-            return "Скрывать статус «записывает видеосообщение» при записи кружочка."
-        case .uploadingVideo:
-            return "Скрывать статус «отправляет видео», пока идёт загрузка."
-        case .voiceRecording:
-            return "Скрывать «записывает голосовое сообщение» во время записи."
-        case .voiceUploading:
-            return "Скрывать «отправляет голосовое», пока идёт загрузка."
-        case .uploadingPhoto:
-            return "Скрывать «отправляет фото», пока идёт загрузка изображения."
-        case .readReceipts:
-            return "Не отправлять серверу отметку о прочтении — синие галочки для собеседника не появятся."
         }
     }
 
@@ -82,23 +59,73 @@ private enum GhostToggle: Int, CaseIterable {
     }
 }
 
-private struct GhostState: Equatable {
-    var values: [Bool]
+// Deleted messages archiving toggles
+private enum DeletedMessagesToggle: Int, CaseIterable {
+    case saveText
+    case saveMedia
+    case saveAudio
+    case saveVoiceNotes
 
-    static func snapshot(from settings: WewPagramSettings) -> GhostState {
-        return GhostState(values: GhostToggle.allCases.map { $0.read(from: settings) })
+    var title: String {
+        switch self {
+        case .saveText:       return "Сообщения"
+        case .saveMedia:      return "Медиа"
+        case .saveAudio:      return "Аудио"
+        case .saveVoiceNotes: return "Голосовые"
+        }
     }
 
-    var allOn: Bool { return !self.values.contains(false) }
+    func read(from settings: WewPagramSettings) -> Bool {
+        switch self {
+        case .saveText:       return settings.deletedMessagesSaveText
+        case .saveMedia:      return settings.deletedMessagesSaveMedia
+        case .saveAudio:      return settings.deletedMessagesSaveAudio
+        case .saveVoiceNotes: return settings.deletedMessagesSaveVoiceNotes
+        }
+    }
+
+    func write(_ value: Bool, to settings: WewPagramSettings) {
+        switch self {
+        case .saveText:       settings.deletedMessagesSaveText = value
+        case .saveMedia:      settings.deletedMessagesSaveMedia = value
+        case .saveAudio:      settings.deletedMessagesSaveAudio = value
+        case .saveVoiceNotes: settings.deletedMessagesSaveVoiceNotes = value
+        }
+    }
+}
+
+private struct GhostState: Equatable {
+    var ghostValues: [Bool]
+    var deletedMessagesEnabled: Bool
+    var deletedMessagesValues: [Bool]
+
+    static func snapshot(from settings: WewPagramSettings) -> GhostState {
+        return GhostState(
+            ghostValues: GhostToggle.allCases.map { $0.read(from: settings) },
+            deletedMessagesEnabled: settings.deletedMessagesEnabled,
+            deletedMessagesValues: DeletedMessagesToggle.allCases.map { $0.read(from: settings) }
+        )
+    }
+
+    var allGhostOn: Bool { return !self.ghostValues.contains(false) }
 }
 
 private final class WewPagramGhostModeControllerArguments {
-    let toggle: (GhostToggle, Bool) -> Void
-    let toggleAll: (Bool) -> Void
+    let toggleGhost: (GhostToggle, Bool) -> Void
+    let toggleAllGhost: (Bool) -> Void
+    let toggleDeletedMessages: (Bool) -> Void
+    let toggleDeletedMessageType: (DeletedMessagesToggle, Bool) -> Void
 
-    init(toggle: @escaping (GhostToggle, Bool) -> Void, toggleAll: @escaping (Bool) -> Void) {
-        self.toggle = toggle
-        self.toggleAll = toggleAll
+    init(
+        toggleGhost: @escaping (GhostToggle, Bool) -> Void,
+        toggleAllGhost: @escaping (Bool) -> Void,
+        toggleDeletedMessages: @escaping (Bool) -> Void,
+        toggleDeletedMessageType: @escaping (DeletedMessagesToggle, Bool) -> Void
+    ) {
+        self.toggleGhost = toggleGhost
+        self.toggleAllGhost = toggleAllGhost
+        self.toggleDeletedMessages = toggleDeletedMessages
+        self.toggleDeletedMessageType = toggleDeletedMessageType
     }
 }
 
@@ -106,54 +133,66 @@ private enum WewPagramGhostModeEntry: ItemListNodeEntry {
     enum StableId: Hashable {
         case masterHeader
         case master
-        case sectionHeader
-        case item(Int)
-        case footer
+        case ghostSectionHeader
+        case ghostItem(Int)
+        case deletedMessagesHeader
+        case deletedMessagesToggle
+        case deletedMessageItem(Int)
     }
 
     case masterHeader(String)
     case master(value: Bool)
-    case sectionHeader(String)
-    case item(index: Int, toggle: GhostToggle, value: Bool)
-    case footer(String)
+    case ghostSectionHeader(String)
+    case ghostItem(index: Int, toggle: GhostToggle, value: Bool)
+    case deletedMessagesHeader(String)
+    case deletedMessagesToggle(value: Bool)
+    case deletedMessageItem(index: Int, toggle: DeletedMessagesToggle, value: Bool)
 
     var section: ItemListSectionId {
         switch self {
         case .masterHeader, .master:
             return 0
-        case .sectionHeader, .item, .footer:
+        case .ghostSectionHeader, .ghostItem:
             return 1
+        case .deletedMessagesHeader, .deletedMessagesToggle, .deletedMessageItem:
+            return 2
         }
     }
 
     var stableId: StableId {
         switch self {
-        case .masterHeader:                return .masterHeader
-        case .master:                      return .master
-        case .sectionHeader:               return .sectionHeader
-        case let .item(index, _, _):       return .item(index)
-        case .footer:                      return .footer
+        case .masterHeader:                          return .masterHeader
+        case .master:                                return .master
+        case .ghostSectionHeader:                    return .ghostSectionHeader
+        case let .ghostItem(index, _, _):            return .ghostItem(index)
+        case .deletedMessagesHeader:                 return .deletedMessagesHeader
+        case .deletedMessagesToggle:                 return .deletedMessagesToggle
+        case let .deletedMessageItem(index, _, _):   return .deletedMessageItem(index)
         }
     }
 
     private var sortIndex: Int {
         switch self {
-        case .masterHeader:                return 0
-        case .master:                      return 1
-        case .sectionHeader:               return 3
-        case let .item(index, _, _):       return 100 + index
-        case .footer:                      return 10_000
+        case .masterHeader:                          return 0
+        case .master:                                return 1
+        case .ghostSectionHeader:                    return 2
+        case let .ghostItem(index, _, _):            return 100 + index
+        case .deletedMessagesHeader:                 return 200
+        case .deletedMessagesToggle:                 return 201
+        case let .deletedMessageItem(index, _, _):   return 202 + index
         }
     }
 
     static func == (lhs: WewPagramGhostModeEntry, rhs: WewPagramGhostModeEntry) -> Bool {
         switch (lhs, rhs) {
-        case let (.masterHeader(a), .masterHeader(b)):     return a == b
-        case let (.master(a), .master(b)):                 return a == b
-        case let (.sectionHeader(a), .sectionHeader(b)):   return a == b
-        case let (.item(i1, t1, v1), .item(i2, t2, v2)):   return i1 == i2 && t1 == t2 && v1 == v2
-        case let (.footer(a), .footer(b)):                 return a == b
-        default:                                           return false
+        case let (.masterHeader(a), .masterHeader(b)):                  return a == b
+        case let (.master(a), .master(b)):                              return a == b
+        case let (.ghostSectionHeader(a), .ghostSectionHeader(b)):      return a == b
+        case let (.ghostItem(i1, t1, v1), .ghostItem(i2, t2, v2)):      return i1 == i2 && t1 == t2 && v1 == v2
+        case let (.deletedMessagesHeader(a), .deletedMessagesHeader(b)):return a == b
+        case let (.deletedMessagesToggle(a), .deletedMessagesToggle(b)):return a == b
+        case let (.deletedMessageItem(i1, t1, v1), .deletedMessageItem(i2, t2, v2)): return i1 == i2 && t1 == t2 && v1 == v2
+        default:                                                        return false
         }
     }
 
@@ -171,29 +210,47 @@ private enum WewPagramGhostModeEntry: ItemListNodeEntry {
             return ItemListSwitchItem(
                 presentationData: presentationData,
                 title: "Режим призрака",
-                text: "Включает или выключает все переключатели ниже.",
                 value: value,
                 sectionId: self.section,
                 style: .blocks,
-                updated: { newValue in arguments.toggleAll(newValue) }
+                updated: { newValue in arguments.toggleAllGhost(newValue) }
             )
 
-        case let .sectionHeader(text):
+        case let .ghostSectionHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
 
-        case let .item(_, toggle, value):
+        case let .ghostItem(_, toggle, value):
             return ItemListSwitchItem(
                 presentationData: presentationData,
                 title: toggle.title,
-                text: toggle.subtitle,
                 value: value,
                 sectionId: self.section,
                 style: .blocks,
-                updated: { newValue in arguments.toggle(toggle, newValue) }
+                updated: { newValue in arguments.toggleGhost(toggle, newValue) }
             )
 
-        case let .footer(text):
-            return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
+        case let .deletedMessagesHeader(text):
+            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
+
+        case let .deletedMessagesToggle(value):
+            return ItemListSwitchItem(
+                presentationData: presentationData,
+                title: "Сохранять удалённые",
+                value: value,
+                sectionId: self.section,
+                style: .blocks,
+                updated: { newValue in arguments.toggleDeletedMessages(newValue) }
+            )
+
+        case let .deletedMessageItem(_, toggle, value):
+            return ItemListSwitchItem(
+                presentationData: presentationData,
+                title: toggle.title,
+                value: value,
+                sectionId: self.section,
+                style: .blocks,
+                updated: { newValue in arguments.toggleDeletedMessageType(toggle, newValue) }
+            )
         }
     }
 }
@@ -203,12 +260,20 @@ public func wewpagramGhostModeController(context: AccountContext) -> ViewControl
     let statePromise = ValuePromise<GhostState>(GhostState.snapshot(from: settings), ignoreRepeated: true)
 
     let arguments = WewPagramGhostModeControllerArguments(
-        toggle: { toggle, value in
+        toggleGhost: { toggle, value in
             toggle.write(value, to: settings)
             statePromise.set(GhostState.snapshot(from: settings))
         },
-        toggleAll: { value in
+        toggleAllGhost: { value in
             settings.isGhostModeEnabled = value
+            statePromise.set(GhostState.snapshot(from: settings))
+        },
+        toggleDeletedMessages: { value in
+            settings.deletedMessagesEnabled = value
+            statePromise.set(GhostState.snapshot(from: settings))
+        },
+        toggleDeletedMessageType: { toggle, value in
+            toggle.write(value, to: settings)
             statePromise.set(GhostState.snapshot(from: settings))
         }
     )
@@ -220,14 +285,24 @@ public func wewpagramGhostModeController(context: AccountContext) -> ViewControl
     |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
         var entries: [WewPagramGhostModeEntry] = []
 
+        // Master toggle section
         entries.append(.masterHeader("ГЛАВНЫЙ ПЕРЕКЛЮЧАТЕЛЬ"))
-        entries.append(.master(value: state.allOn))
+        entries.append(.master(value: state.allGhostOn))
 
-        entries.append(.sectionHeader("СКРЫВАТЬ ОТ ДРУГИХ"))
+        // Ghost mode toggles (privacy hiding)
+        entries.append(.ghostSectionHeader("СКРЫВАТЬ"))
         for (index, toggle) in GhostToggle.allCases.enumerated() {
-            entries.append(.item(index: index, toggle: toggle, value: state.values[index]))
+            entries.append(.ghostItem(index: index, toggle: toggle, value: state.ghostValues[index]))
         }
-        entries.append(.footer("Настройки применяются локально. Отключённые события просто не отправляются на сервер — их не видит ни один собеседник."))
+
+        // Deleted messages archiving section
+        entries.append(.deletedMessagesHeader("УДАЛЁННЫЕ СООБЩЕНИЯ"))
+        entries.append(.deletedMessagesToggle(value: state.deletedMessagesEnabled))
+        if state.deletedMessagesEnabled {
+            for (index, toggle) in DeletedMessagesToggle.allCases.enumerated() {
+                entries.append(.deletedMessageItem(index: index, toggle: toggle, value: state.deletedMessagesValues[index]))
+            }
+        }
 
         let controllerState = ItemListControllerState(
             presentationData: ItemListPresentationData(presentationData),
