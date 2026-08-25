@@ -36,6 +36,14 @@ public final class WewPagramSettings {
         static let fakeRatingStars   = "WewPagram.fakeRatingStars"
         static let injectedFakeStars = "WewPagram.injectedFakeStars"
         static let fakeGiftsData     = "WewPagram.fakeGiftsData"
+        
+        // Deleted messages archive settings
+        static let deletedMessagesEnabled         = "WewPagram.deletedMessagesEnabled"
+        static let deletedMessagesSaveText        = "WewPagram.deletedMessagesSaveText"
+        static let deletedMessagesSaveMedia       = "WewPagram.deletedMessagesSaveMedia"
+        static let deletedMessagesSaveAudio       = "WewPagram.deletedMessagesSaveAudio"
+        static let deletedMessagesSaveVoiceNotes  = "WewPagram.deletedMessagesSaveVoiceNotes"
+        static let deletedMessagesOfflineMode     = "WewPagram.deletedMessagesOfflineMode"
     }
 
     private init() {
@@ -47,6 +55,16 @@ public final class WewPagramSettings {
                 self.defaults.set(legacyValue, forKey: key)
             }
             self.defaults.removeObject(forKey: Keys.legacyGhostMode)
+        }
+        
+        // Initialize deleted messages settings with defaults
+        if self.defaults.object(forKey: Keys.deletedMessagesEnabled) == nil {
+            self.defaults.set(true, forKey: Keys.deletedMessagesEnabled)
+            self.defaults.set(true, forKey: Keys.deletedMessagesSaveText)
+            self.defaults.set(true, forKey: Keys.deletedMessagesSaveMedia)
+            self.defaults.set(true, forKey: Keys.deletedMessagesSaveAudio)
+            self.defaults.set(true, forKey: Keys.deletedMessagesSaveVoiceNotes)
+            self.defaults.set(true, forKey: Keys.deletedMessagesOfflineMode)
         }
     }
 
@@ -285,6 +303,8 @@ public final class WewPagramSettings {
     // deletion happens, show in a separate local-only viewer. We never
     // interfere with the actual deletion — this is purely additive/read-only
     // with respect to the real sync pipeline, so it can't break message sync.
+    // Extended with media/audio support and offline mode.
+    
     public struct DeletedMessageRecord: Codable {
         public var peerId: Int64
         public var authorId: Int64?
@@ -292,18 +312,60 @@ public final class WewPagramSettings {
         public var text: String
         public var timestamp: Int32
         public var deletedAt: Int32
+        
+        // Media and audio archival
+        public var mediaData: Data?          // Encoded media (photo, video, doc)
+        public var audioData: Data?          // Encoded audio (MP3, etc)
+        public var voiceNoteData: Data?      // Voice message OGG
+        public var mediaType: String?        // Type identifier (photo, video, audio, voice)
 
-        public init(peerId: Int64, authorId: Int64?, authorName: String?, text: String, timestamp: Int32, deletedAt: Int32) {
+        public init(peerId: Int64, authorId: Int64?, authorName: String?, text: String, timestamp: Int32, deletedAt: Int32, mediaData: Data? = nil, audioData: Data? = nil, voiceNoteData: Data? = nil, mediaType: String? = nil) {
             self.peerId = peerId
             self.authorId = authorId
             self.authorName = authorName
             self.text = text
             self.timestamp = timestamp
             self.deletedAt = deletedAt
+            self.mediaData = mediaData
+            self.audioData = audioData
+            self.voiceNoteData = voiceNoteData
+            self.mediaType = mediaType
         }
     }
 
     private static let maxDeletedMessageRecords = 2000
+
+    // Deleted messages archive configuration
+    public var deletedMessagesEnabled: Bool {
+        get { self.defaults.bool(forKey: Keys.deletedMessagesEnabled) }
+        set { self.defaults.set(newValue, forKey: Keys.deletedMessagesEnabled) }
+    }
+    
+    public var deletedMessagesSaveText: Bool {
+        get { self.defaults.bool(forKey: Keys.deletedMessagesSaveText) }
+        set { self.defaults.set(newValue, forKey: Keys.deletedMessagesSaveText) }
+    }
+    
+    public var deletedMessagesSaveMedia: Bool {
+        get { self.defaults.bool(forKey: Keys.deletedMessagesSaveMedia) }
+        set { self.defaults.set(newValue, forKey: Keys.deletedMessagesSaveMedia) }
+    }
+    
+    public var deletedMessagesSaveAudio: Bool {
+        get { self.defaults.bool(forKey: Keys.deletedMessagesSaveAudio) }
+        set { self.defaults.set(newValue, forKey: Keys.deletedMessagesSaveAudio) }
+    }
+    
+    public var deletedMessagesSaveVoiceNotes: Bool {
+        get { self.defaults.bool(forKey: Keys.deletedMessagesSaveVoiceNotes) }
+        set { self.defaults.set(newValue, forKey: Keys.deletedMessagesSaveVoiceNotes) }
+    }
+    
+    // Offline mode: continue archiving messages even when not connected
+    public var deletedMessagesOfflineMode: Bool {
+        get { self.defaults.bool(forKey: Keys.deletedMessagesOfflineMode) }
+        set { self.defaults.set(newValue, forKey: Keys.deletedMessagesOfflineMode) }
+    }
 
     public var deletedMessagesData: [Data] {
         get { self.defaults.array(forKey: "WewPagram.deletedMessages") as? [Data] ?? [] }
@@ -311,8 +373,25 @@ public final class WewPagramSettings {
     }
 
     public func archiveDeletedMessage(_ record: DeletedMessageRecord) {
-        guard !record.text.isEmpty else { return } // nothing worth keeping (pure media, etc — v1 skips these)
+        // Check if archiving is enabled globally
+        guard deletedMessagesEnabled else { return }
+        
+        // Determine what should be archived based on content type and settings
+        var shouldArchive = false
+        
+        if !record.text.isEmpty && deletedMessagesSaveText {
+            shouldArchive = true
+        } else if record.mediaData != nil && deletedMessagesSaveMedia {
+            shouldArchive = true
+        } else if record.audioData != nil && deletedMessagesSaveAudio {
+            shouldArchive = true
+        } else if record.voiceNoteData != nil && deletedMessagesSaveVoiceNotes {
+            shouldArchive = true
+        }
+        
+        guard shouldArchive else { return }
         guard let encoded = try? JSONEncoder().encode(record) else { return }
+        
         var current = self.deletedMessagesData
         current.append(encoded)
         if current.count > Self.maxDeletedMessageRecords {
