@@ -250,7 +250,7 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         let arguments = arguments as! WewPagramFakeIdentityControllerArguments
         switch self {
         case let .phoneNumber(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Номер"), text: value, placeholder: "", sectionId: self.section, style: .blocks, updated: { arguments.updateFakePhoneNumber($0) })
+            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Номер"), text: value, placeholder: "", sectionId: self.section, textUpdated: { arguments.updateFakePhoneNumber($0) }, action: {})
         case let .nftHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .nftEntry(index, username, price):
@@ -259,9 +259,9 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
                 arguments.removeNftEntry(index)
             })
         case let .nftAddUsername(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "NFT юз"), text: value, placeholder: "", sectionId: self.section, style: .blocks, updated: { arguments.updateNewNftUsername($0) })
+            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "NFT юз"), text: value, placeholder: "", sectionId: self.section, textUpdated: { arguments.updateNewNftUsername($0) }, action: {})
         case let .nftAddPrice(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Цена"), text: value, placeholder: "", sectionId: self.section, style: .blocks, updated: { arguments.updateNewNftPrice($0) })
+            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Цена"), text: value, placeholder: "", sectionId: self.section, textUpdated: { arguments.updateNewNftPrice($0) }, action: {})
         case .nftAddButton:
             return ItemListActionItem(presentationData: presentationData, title: "Добавить NFT юз", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 arguments.addNftEntry()
@@ -271,9 +271,9 @@ private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
         case let .ratingToggle(value):
             return ItemListSwitchItem(presentationData: presentationData, title: "Рейтинг", value: value, sectionId: self.section, style: .blocks, updated: { arguments.toggleFakeRating($0) })
         case let .ratingLevel(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Уровень"), text: value, placeholder: "1", sectionId: self.section, style: .blocks, updated: { arguments.updateFakeRatingLevel($0) })
+            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Уровень"), text: value, placeholder: "1", sectionId: self.section, textUpdated: { arguments.updateFakeRatingLevel($0) }, action: {})
         case let .ratingStars(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Баланс"), text: value, placeholder: "0", sectionId: self.section, style: .blocks, updated: { arguments.updateFakeRatingStars($0) })
+            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Баланс"), text: value, placeholder: "0", sectionId: self.section, textUpdated: { arguments.updateFakeRatingStars($0) }, action: {})
         case let .giftsHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case .giftsAddButton:
