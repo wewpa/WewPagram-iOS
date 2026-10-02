@@ -31,7 +31,7 @@ private struct WewDeletedMessageEntry: ItemListNodeEntry {
         let dateText = formatter.string(from: deletedDate)
         let authorText = self.record.authorName ?? "Неизвестно"
         let title = "\(authorText) — удалено \(dateText)"
-        return ItemListTextWithLabelItem(presentationData: presentationData, label: title, text: self.record.text, style: .blocks, textColor: .primary, enabledEntityTypes: [], multiline: true, sectionId: self.section, action: nil)
+        return ItemListTextWithLabelItem(presentationData: presentationData, label: title, text: (self.record.mediaType.map { media in self.record.text.isEmpty ? "[\(media)]" : "[\(media)] " + self.record.text } ?? self.record.text), style: .blocks, textColor: .primary, enabledEntityTypes: [], multiline: true, sectionId: self.section, action: nil)
     }
 }
 

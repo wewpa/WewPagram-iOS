@@ -27,6 +27,88 @@ import LottieComponent
 import ButtonComponent
 import ContextUI
 
+// MARK: - WewPagram: locally stored (cosmetic) gifts
+
+// Returns the id of a locally stored gift, or nil for a real one.
+func wewFakeGiftId(_ reference: StarGiftReference?) -> Int64? {
+    if let reference, case let .peer(_, id) = reference, id < 0, WewPagramSettings.shared.isFakeGiftId(id) {
+        return id
+    }
+    return nil
+}
+
+// Builds the displayed gifts: pinned local gifts go to the very top (like
+// pinned real ones), hidden ones keep the "hidden" badge and honour the
+// displayed / hidden filter, the rest is merged into the real list by date.
+private func wewMergeFakeGifts(real: [ProfileGiftsContext.State.StarGift], peerId: EnginePeer.Id, filter: ProfileGiftsContext.Filters) -> [ProfileGiftsContext.State.StarGift] {
+    let decoder = JSONDecoder()
+    var pinnedFakes: [(Int32, ProfileGiftsContext.State.StarGift)] = []
+    var otherFakes: [ProfileGiftsContext.State.StarGift] = []
+
+    for record in WewPagramSettings.shared.fakeGiftRecords {
+        guard let decoded = try? decoder.decode(ProfileGiftsContext.State.StarGift.self, from: record.data) else {
+            continue
+        }
+        if filter != .All {
+            if record.hidden {
+                if !filter.contains(.hidden) { continue }
+            } else {
+                if !filter.contains(.displayed) { continue }
+            }
+            switch decoded.gift {
+            case .unique:
+                if !filter.contains(.unique) { continue }
+            case .generic:
+                if !filter.contains(.unlimited) && !filter.contains(.limitedUpgradable) && !filter.contains(.limitedNonUpgradable) { continue }
+            }
+        }
+        let gift = ProfileGiftsContext.State.StarGift(
+            gift: decoded.gift,
+            reference: .peer(peerId: peerId, id: record.id),
+            fromPeer: decoded.fromPeer,
+            date: decoded.date,
+            text: decoded.text,
+            entities: decoded.entities,
+            nameHidden: decoded.nameHidden,
+            savedToProfile: !record.hidden,
+            pinnedToTop: record.pinned,
+            convertStars: nil,
+            canUpgrade: false,
+            canExportDate: nil,
+            upgradeStars: nil,
+            transferStars: nil,
+            canTransferDate: nil,
+            canResaleDate: nil,
+            collectionIds: nil,
+            prepaidUpgradeHash: nil,
+            upgradeSeparate: false,
+            dropOriginalDetailsStars: nil,
+            number: decoded.number,
+            isRefunded: false,
+            canCraftAt: nil
+        )
+        if record.pinned {
+            pinnedFakes.append((record.addedAt, gift))
+        } else {
+            otherFakes.append(gift)
+        }
+    }
+
+    // Newest pinned local gift first.
+    let sortedPinnedFakes = pinnedFakes.sorted(by: { $0.0 > $1.0 }).map { $0.1 }
+
+    let realPinned = real.filter { $0.pinnedToTop }
+    var rest = real.filter { !$0.pinnedToTop }
+    for fake in otherFakes {
+        if let index = rest.firstIndex(where: { $0.date < fake.date }) {
+            rest.insert(fake, at: index)
+        } else {
+            rest.append(fake)
+        }
+    }
+    return sortedPinnedFakes + realPinned + rest
+}
+
 final class GiftsListView: UIView {
     private let context: AccountContext
     private let peerId: EnginePeer.Id
@@ -146,8 +228,9 @@ final class GiftsListView: UIView {
         self.dataDisposable = combineLatest(
             queue: Queue.mainQueue(),
             profileGifts.state,
-            self.reorderedReferencesPromise.get()
-        ).startStrict(next: { [weak self] state, reorderedReferences in
+            self.reorderedReferencesPromise.get(),
+            WewPagramSettings.shared.fakeGiftsRevision.get()
+        ).startStrict(next: { [weak self] state, reorderedReferences, _ in
             guard let self else {
                 return
             }
@@ -187,12 +270,8 @@ final class GiftsListView: UIView {
                 self.pinnedReferences = Array(stateItems.filter { $0.pinnedToTop }.compactMap { $0.reference })
             } else {
                 var wewFilteredGifts = state.filteredGifts
-                if self.peerId == self.context.account.peerId {
-                    let decoder = JSONDecoder()
-                    let fakeGifts = WewPagramSettings.shared.fakeGiftsData.compactMap { data -> ProfileGiftsContext.State.StarGift? in
-                        try? decoder.decode(ProfileGiftsContext.State.StarGift.self, from: data)
-                    }
-                    wewFilteredGifts.append(contentsOf: fakeGifts)
+                if self.peerId == self.context.account.peerId && !self.isCollection {
+                    wewFilteredGifts = wewMergeFakeGifts(real: wewFilteredGifts, peerId: self.peerId, filter: state.filter)
                 }
                 self.starsProducts = wewFilteredGifts
                 self.pinnedReferences = Array(state.gifts.filter { $0.pinnedToTop }.compactMap { $0.reference })
@@ -614,10 +693,17 @@ final class GiftsListView: UIView {
                                             guard let self else {
                                                 return
                                             }
+                                            if let fakeId = wewFakeGiftId(reference) {
+                                                WewPagramSettings.shared.setFakeGiftHidden(id: fakeId, hidden: !added)
+                                                return
+                                            }
                                             self.profileGifts.updateStarGiftAddedToProfile(reference: reference, added: added)
                                         },
                                         convertToStars: { [weak self] reference in
                                             guard let self else {
+                                                return
+                                            }
+                                            if wewFakeGiftId(reference) != nil {
                                                 return
                                             }
                                             self.profileGifts.convertStarGift(reference: reference)
@@ -655,6 +741,10 @@ final class GiftsListView: UIView {
                                         togglePinnedToTop: { [weak self] reference, pinnedToTop in
                                             guard let self else {
                                                 return false
+                                            }
+                                            if let fakeId = wewFakeGiftId(reference) {
+                                                WewPagramSettings.shared.setFakeGiftPinned(id: fakeId, pinned: pinnedToTop)
+                                                return true
                                             }
                                             if pinnedToTop && self.pinnedReferences.count >= self.maxPinnedCount {
                                                 self.displayUnpinScreen?(product, {

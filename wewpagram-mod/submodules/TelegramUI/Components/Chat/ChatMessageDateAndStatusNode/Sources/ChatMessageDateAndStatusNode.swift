@@ -773,7 +773,9 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             
             leftInset += reactionInset
             
-            let layoutSize = CGSize(width: leftInset + impressionWidth + date.size.width + statusWidth + backgroundInsets.left + backgroundInsets.right, height: date.size.height + backgroundInsets.top + backgroundInsets.bottom)
+            // WewPagram: reserve room for the trash icon (8pt gap + 10pt icon).
+            let wewTrashWidth: CGFloat = arguments.wewIsDeletedGhost ? 18.0 : 0.0
+            let layoutSize = CGSize(width: leftInset + impressionWidth + date.size.width + statusWidth + wewTrashWidth + backgroundInsets.left + backgroundInsets.right, height: date.size.height + backgroundInsets.top + backgroundInsets.bottom)
             
             let verticalReactionsInset: CGFloat
             let verticalInset: CGFloat
@@ -1132,7 +1134,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                                 strongSelf.addSubnode(iconNode)
                             }
                             iconNode.frame = CGRect(
-                                origin: CGPoint(x: leftOffset + leftInset + backgroundInsets.left + impressionWidth + date.size.width + 3.0, y: backgroundInsets.top + 1.0 + offset + verticalInset + floor((date.size.height - iconSize.height) / 2.0)),
+                                origin: CGPoint(x: leftOffset + leftInset + backgroundInsets.left + impressionWidth + date.size.width + 8.0, y: backgroundInsets.top + 1.0 + offset + verticalInset + floor((date.size.height - iconSize.height) / 2.0)),
                                 size: iconSize
                             )
                         } else if let existing = strongSelf.wewDeletedIcon {

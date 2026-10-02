@@ -4440,53 +4440,19 @@ func replayFinalState(
                     }
                 }
             case let .DeleteMessagesWithGlobalIds(ids):
-                // WewPagram: archive a copy of each message's content before
-                // it's actually deleted. Purely additive/read-only — the
-                // real deletion below is completely untouched.
-                var wewSyntheticMessages: [StoreMessage] = []
-                for resolvedId in transaction.wewResolveGlobalMessageIds(ids) {
-                    if let message = transaction.getMessage(resolvedId), !message.text.isEmpty {
-                        WewPagramSettings.shared.archiveDeletedMessage(WewPagramSettings.DeletedMessageRecord(
-                            peerId: resolvedId.peerId.toInt64(),
-                            authorId: message.author?.id.toInt64(),
-                            authorName: message.author?.debugDisplayTitle,
-                            text: message.text,
-                            timestamp: message.timestamp,
-                            deletedAt: Int32(Date().timeIntervalSince1970)
-                        ))
-
-                        // Reuse the same numeric id under the Local namespace
-                        // — the real message at this id is about to be
-                        // deleted below, so there's no collision, and Postbox
-                        // naturally places this at the right chronological
-                        // spot via its own timestamp-based ordering.
-                        let localId = MessageId(peerId: resolvedId.peerId, namespace: Namespaces.Message.Local, id: resolvedId.id)
-                        if transaction.getMessage(localId) == nil {
-                            wewSyntheticMessages.append(StoreMessage(
-                                id: localId,
-                                customStableId: nil,
-                                globallyUniqueId: nil,
-                                groupingKey: nil,
-                                threadId: message.threadId,
-                                timestamp: message.timestamp,
-                                flags: StoreMessageFlags(message.flags),
-                                tags: [],
-                                globalTags: [],
-                                localTags: [],
-                                forwardInfo: nil,
-                                authorId: message.author?.id,
-                                text: message.text,
-                                attributes: [WewDeletedMessageAttribute(deletedAt: Int32(Date().timeIntervalSince1970))],
-                                media: []
-                            ))
-                        }
-                    }
-                }
-                if !wewSyntheticMessages.isEmpty {
-                    let _ = transaction.addMessages(wewSyntheticMessages, location: .Random)
+                // WewPagram: archive text + media of each message and keep a
+                // local copy in the chat before the real deletion happens.
+                // The real deletion below is untouched, except that the files
+                // of preserved media are not removed from the MediaBox.
+                let wewCopies = wewPrepareDeletedCopies(transaction: transaction, ids: transaction.wewResolveGlobalMessageIds(ids))
+                if !wewCopies.messages.isEmpty {
+                    let _ = transaction.addMessages(wewCopies.messages, location: .Random)
                 }
                 var resourceIds: [MediaResourceId] = []
                 transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
+                    if let mediaId = media.id, wewCopies.preservedMediaIds.contains(mediaId) {
+                        return
+                    }
                     addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
                 })
                 if !resourceIds.isEmpty {
@@ -4494,6 +4460,11 @@ func replayFinalState(
                 }
                 deletedMessageIds.append(contentsOf: ids.map { .global($0) })
             case let .DeleteMessages(ids):
+                // WewPagram: same archiving for channel / non-global deletions.
+                let wewChannelCopies = wewPrepareDeletedCopies(transaction: transaction, ids: ids)
+                if !wewChannelCopies.messages.isEmpty {
+                    let _ = transaction.addMessages(wewChannelCopies.messages, location: .Random)
+                }
                 _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: ids, manualAddMessageThreadStatsDifference: { id, add, remove in
                     addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
                 })
