@@ -5,6 +5,9 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-26
@@ -154,3 +157,25 @@ jobs:
             upstream/build/artifacts/logs/**
             upstream/build/artifacts/**
           retention-days: 14
+
+      # Диагностика: при падении кладём ошибки компиляции в ветку build-logs,
+      # чтобы их можно было прочитать без доступа к сырым логам Actions.
+      - name: Publish build errors to branch build-logs
+        if: failure()
+        run: |
+          LOG="$GITHUB_WORKSPACE/upstream/build.log"
+          OUT="$RUNNER_TEMP/build-errors.txt"
+          {
+            echo "run: $GITHUB_RUN_ID  sha: $GITHUB_SHA"
+            echo "=== error lines ==="
+            grep -n -E "error:|ERROR:|fatal error|Undefined symbols|failed to" "$LOG" | head -200
+            echo "=== last 150 lines ==="
+            tail -n 150 "$LOG"
+          } > "$OUT" 2>&1 || true
+          cd wewpagram-mod-source
+          git checkout -q --orphan build-logs
+          git rm -rf -q . || true
+          cp "$OUT" build-errors.txt
+          git add build-errors.txt
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "build errors run $GITHUB_RUN_ID"
+          git push -f origin build-logs
