@@ -43,6 +43,17 @@ jobs:
       - name: Show disk space
         run: df -h /
 
+      - name: Clean Bazel cache to free memory
+        run: |
+          set -x
+          BAZEL_USER_ROOT="/private/var/tmp/_bazel_wewpagram"
+          if [ -d "$BAZEL_USER_ROOT" ]; then
+            echo "Removing Bazel cache..."
+            rm -rf "$BAZEL_USER_ROOT"
+          fi
+          bazel clean --expunge || true
+          echo "Bazel cache cleaned"
+
       - name: Select Xcode
         run: |
           set -x
@@ -61,6 +72,8 @@ jobs:
           fi
 
       - name: Build WewPagram (capture logs)
+        env:
+          BAZEL_JVM_OPTS: "-Xmx8g -Xms4g"
         run: |
           set -x
           set -o pipefail
