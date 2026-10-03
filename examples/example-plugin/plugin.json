@@ -1,0 +1,10 @@
+{
+  "id": "example.signature",
+  "name": "Пример: подпись",
+  "version": "1.0.0",
+  "author": "WewPagram",
+  "description": "Добавляет подпись к исходящим сообщениям и показывает, как устроены страницы, кнопки и картинки в плагинах.",
+  "icon": "icon.png",
+  "entry": "main.js",
+  "permissions": ["send", "ghost"]
+}

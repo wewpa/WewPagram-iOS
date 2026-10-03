@@ -62,35 +62,61 @@ func wewGhostIcon() -> UIImage? {
     })
 }
 
-// The mod's logo: rounded gradient square with a stroked "W".
-func wewLogoImage(side: CGFloat) -> UIImage? {
+// The mod's logo: its avatar clipped to a rounded square. A plugin may supply
+// its own logo image (png/jpg), which is used instead when given.
+func wewLogoImage(side: CGFloat, overridePath: String? = nil) -> UIImage? {
+    var source: UIImage?
+    if let path = overridePath, let custom = UIImage(contentsOfFile: path) {
+        source = custom
+    } else {
+        source = wewAvatarImage()
+    }
+    guard let image = source else {
+        return nil
+    }
     return generateImage(CGSize(width: side, height: side), rotatedContext: { size, context in
         context.clear(CGRect(origin: .zero, size: size))
         let rect = CGRect(origin: .zero, size: size)
+        context.setFillColor(UIColor.white.cgColor)
+        context.addPath(UIBezierPath(roundedRect: rect, cornerRadius: size.width * 0.225).cgPath)
+        context.fillPath()
+
         context.saveGState()
         context.addPath(UIBezierPath(roundedRect: rect, cornerRadius: size.width * 0.225).cgPath)
         context.clip()
-        let colors = [UIColor(rgb: 0x3A9BF0).cgColor, UIColor(rgb: 0x7B5CFF).cgColor] as CFArray
-        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: nil) {
-            context.drawLinearGradient(gradient, start: CGPoint(x: 0.0, y: 0.0), end: CGPoint(x: size.width, y: size.height), options: [])
-        }
+        UIGraphicsPushContext(context)
+        // aspect-fill
+        let scale = max(size.width / image.size.width, size.height / image.size.height)
+        let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        image.draw(in: CGRect(x: (size.width - drawSize.width) / 2.0, y: (size.height - drawSize.height) / 2.0, width: drawSize.width, height: drawSize.height))
+        UIGraphicsPopContext()
         context.restoreGState()
 
-        let w = size.width
-        let h = size.height
-        let letter = UIBezierPath()
-        letter.move(to: CGPoint(x: 0.22 * w, y: 0.31 * h))
-        letter.addLine(to: CGPoint(x: 0.36 * w, y: 0.70 * h))
-        letter.addLine(to: CGPoint(x: 0.50 * w, y: 0.43 * h))
-        letter.addLine(to: CGPoint(x: 0.64 * w, y: 0.70 * h))
-        letter.addLine(to: CGPoint(x: 0.78 * w, y: 0.31 * h))
-
-        context.setStrokeColor(UIColor.white.cgColor)
-        context.setLineWidth(w * 0.085)
-        context.setLineCap(.round)
-        context.setLineJoin(.round)
-        context.addPath(letter.cgPath)
+        context.setStrokeColor(UIColor(white: 0.5, alpha: 0.35).cgColor)
+        context.setLineWidth(1.0)
+        context.addPath(UIBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), cornerRadius: size.width * 0.225).cgPath)
         context.strokePath()
+    })
+}
+
+// Small coloured tile with a plugin's own icon (png/jpg), aspect-fill.
+func wewPluginTile(path: String) -> UIImage? {
+    guard let image = UIImage(contentsOfFile: path) else {
+        return nil
+    }
+    let size = CGSize(width: 30.0, height: 30.0)
+    return generateImage(size, rotatedContext: { size, context in
+        context.clear(CGRect(origin: .zero, size: size))
+        let rect = CGRect(origin: .zero, size: size)
+        context.saveGState()
+        context.addPath(UIBezierPath(roundedRect: rect, cornerRadius: 7.0).cgPath)
+        context.clip()
+        UIGraphicsPushContext(context)
+        let scale = max(size.width / image.size.width, size.height / image.size.height)
+        let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        image.draw(in: CGRect(x: (size.width - drawSize.width) / 2.0, y: (size.height - drawSize.height) / 2.0, width: drawSize.width, height: drawSize.height))
+        UIGraphicsPopContext()
+        context.restoreGState()
     })
 }
 

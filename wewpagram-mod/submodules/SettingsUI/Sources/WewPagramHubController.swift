@@ -8,99 +8,19 @@ import ItemListUI
 import PresentationDataUtils
 import AccountContext
 
-private final class WewPagramHubControllerArguments {
-    let openGhostMode: () -> Void
-    let openDeletedMessages: () -> Void
-    let openFakeIdentity: () -> Void
-    let openUserbot: () -> Void
-
-    init(openGhostMode: @escaping () -> Void, openDeletedMessages: @escaping () -> Void, openFakeIdentity: @escaping () -> Void, openUserbot: @escaping () -> Void) {
-        self.openGhostMode = openGhostMode
-        self.openDeletedMessages = openDeletedMessages
-        self.openFakeIdentity = openFakeIdentity
-        self.openUserbot = openUserbot
-    }
-}
-
-private enum WewPagramHubEntry: ItemListNodeEntry {
-    case header
-    case ghostMode(String)
-    case deletedMessages(String)
-    case fakeIdentity
-    case userbot(String)
-
-    var section: ItemListSectionId {
-        switch self {
-        case .header:
-            return 0
-        case .ghostMode, .deletedMessages:
-            return 1
-        case .fakeIdentity:
-            return 2
-        case .userbot:
-            return 3
-        }
-    }
-
-    var stableId: Int {
-        switch self {
-        case .header: return 0
-        case .ghostMode: return 1
-        case .deletedMessages: return 2
-        case .fakeIdentity: return 3
-        case .userbot: return 4
-        }
-    }
-
-    static func < (lhs: WewPagramHubEntry, rhs: WewPagramHubEntry) -> Bool {
-        return lhs.stableId < rhs.stableId
-    }
-
-    func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
-        let arguments = arguments as! WewPagramHubControllerArguments
-        switch self {
-        case .header:
-            return WewPagramHeaderItem(presentationData: presentationData, icon: wewLogoImage(side: 84.0), name: "WewPagram", version: wewVersionString, sectionId: self.section)
-        case let .ghostMode(label):
-            return ItemListDisclosureItem(presentationData: presentationData, icon: wewGhostIcon(), title: "Режим призрака", label: label, sectionId: self.section, style: .blocks, action: {
-                arguments.openGhostMode()
-            })
-        case let .deletedMessages(label):
-            return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.deleteChats, title: "Удалённые сообщения", label: label, sectionId: self.section, style: .blocks, action: {
-                arguments.openDeletedMessages()
-            })
-        case .fakeIdentity:
-            return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.myProfile, title: "Профиль", label: "", sectionId: self.section, style: .blocks, action: {
-                arguments.openFakeIdentity()
-            })
-        case let .userbot(label):
-            return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.bot, title: "Юзербот", label: label, sectionId: self.section, style: .blocks, action: {
-                arguments.openUserbot()
-            })
-        }
-    }
-}
-
 public func wewpagramHubController(context: AccountContext) -> ViewController {
-    var pushControllerImpl: ((ViewController) -> Void)?
+    let manager = WewPluginManager.shared
+    manager.startIfNeeded()
 
-    let arguments = WewPagramHubControllerArguments(
-        openGhostMode: {
-            pushControllerImpl?(wewpagramGhostModeController(context: context))
-        },
-        openDeletedMessages: {
-            pushControllerImpl?(wewpagramDeletedMessagesController(context: context))
-        },
-        openFakeIdentity: {
-            pushControllerImpl?(wewpagramFakeIdentityController(context: context))
-        },
-        openUserbot: {
-            pushControllerImpl?(wewpagramUserbotController(context: context))
-        }
-    )
+    var controllerRef: ViewController?
+    let push: (ViewController) -> Void = { c in
+        (controllerRef as? ItemListController)?.push(c)
+    }
 
-    let signal = context.sharedContext.presentationData
-    |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    let changes = Signal<Void, NoError>.single(Void()) |> then(wewDefaultsChanged())
+
+    let entries = combineLatest(queue: .mainQueue(), manager.revision.get(), changes)
+    |> map { _, _ -> [WewEntry] in
         let settings = WewPagramSettings.shared
 
         let ghostCount = settings.ghostEnabledCount
@@ -113,31 +33,33 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
             ghostLabel = "\(ghostCount)/\(WewPagramSettings.ghostTotalCount)"
         }
         let deletedLabel = settings.deletedMessagesEnabled ? "Вкл" : "Выкл"
-        let userbotLabel = settings.isCloudConfigured ? "Настроен" : ""
+        let userbotLabel = settings.userbotEnabled ? "Вкл" : "Выкл"
 
-        let entries: [WewPagramHubEntry] = [
-            .header,
-            .ghostMode(ghostLabel),
-            .deletedMessages(deletedLabel),
-            .fakeIdentity,
-            .userbot(userbotLabel)
+        let plugins = manager.installedPlugins()
+        let logoPath = manager.logoPath()
+
+        var result: [WewEntry] = [
+            WewEntry(order: 0, section: 0, signature: "header|" + (logoPath ?? ""), build: { pd in
+                return WewPagramHeaderItem(presentationData: pd, icon: wewLogoImage(side: 84.0, overridePath: logoPath), name: "WewPagram", version: wewVersionString, sectionId: 0)
+            }),
+            wewRow(10, 1, icon: wewGhostIcon(), title: "Режим призрака", label: ghostLabel, action: { push(wewpagramGhostModeController(context: context)) }),
+            wewRow(11, 1, icon: PresentationResourcesSettings.deleteChats, title: "Удалённые сообщения", label: deletedLabel, action: { push(wewpagramDeletedMessagesController(context: context)) }),
+            wewRow(20, 2, icon: PresentationResourcesSettings.myProfile, title: "Профиль", label: "", action: { push(wewpagramFakeIdentityController(context: context)) }),
+            wewRow(30, 3, icon: PresentationResourcesSettings.bot, title: "Юзербот", label: userbotLabel, action: { push(wewpagramUserbotController(context: context)) }),
+            wewRow(40, 4, icon: PresentationResourcesSettings.appearance, title: "Плагины", label: plugins.isEmpty ? "" : "\(plugins.count)", action: { push(wewpagramPluginsController(context: context)) })
         ]
 
-        let controllerState = ItemListControllerState(
-            presentationData: ItemListPresentationData(presentationData),
-            title: .text("WewPagram"),
-            leftNavigationButton: nil,
-            rightNavigationButton: nil,
-            backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back)
-        )
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks)
-
-        return (controllerState, (listState, arguments))
+        // Pages that enabled plugins added through wew.menu.add
+        for (index, item) in manager.menuItems().enumerated() {
+            let icon = item.iconPath.flatMap { wewPluginTile(path: $0) } ?? PresentationResourcesSettings.appearance
+            result.append(wewRow(100 + index, 4, icon: icon, title: item.title, label: "", action: {
+                push(wewpagramPluginPageController(context: context, pluginId: item.pluginId, itemId: item.itemId))
+            }))
+        }
+        return result
     }
 
-    let controller = ItemListController(context: context, state: signal)
-    pushControllerImpl = { [weak controller] c in
-        controller?.push(c)
-    }
+    let controller = wewListController(context: context, title: "WewPagram", entries: entries)
+    controllerRef = controller
     return controller
 }

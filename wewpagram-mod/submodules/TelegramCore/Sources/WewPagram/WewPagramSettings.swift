@@ -14,6 +14,10 @@ public final class WewPagramSettings {
     public static let shared: WewPagramSettings = {
         let instance = WewPagramSettings()
         instance.migrateBalanceIfNeeded()
+        // Plugins are started a moment later: they read these settings themselves.
+        DispatchQueue.main.async {
+            WewPluginManager.shared.startIfNeeded()
+        }
         return instance
     }()
 
@@ -42,10 +46,10 @@ public final class WewPagramSettings {
         static let injectedFakeStars = "WewPagram.injectedFakeStars"
         static let fakeGiftsData     = "WewPagram.fakeGiftsData"
         static let fakeGiftsV2       = "WewPagram.fakeGiftsV2"
-        static let cloudServerURL    = "WewPagram.cloudServerURL"
+        static let userbotAppKey     = "WewPagram.userbotAppKey"
+        static let userbotEnabled    = "WewPagram.userbotEnabled"
         static let fakeBalanceEnabled = "WewPagram.fakeBalanceEnabled"
         static let fakeBalanceStars   = "WewPagram.fakeBalanceStars"
-        static let cloudApiKey       = "WewPagram.cloudApiKey"
         
         // Deleted messages archive settings
         static let deletedMessagesEnabled         = "WewPagram.deletedMessagesEnabled"
@@ -380,22 +384,24 @@ public final class WewPagramSettings {
         self.fakeGiftRecords = []
     }
 
-    // MARK: - Cloud (own server + userbot)
-    // The server and userbot are self-hosted by the user: the userbot keeps
-    // receiving messages while the app is suspended and the app can reach the
-    // same archive through this URL / key.
-    public var cloudServerURL: String {
-        get { self.defaults.string(forKey: Keys.cloudServerURL) ?? "" }
-        set { self.defaults.set(newValue, forKey: Keys.cloudServerURL) }
+    // MARK: - Userbot (own server)
+    // The app links itself to the userbot of the SAME Telegram account: it
+    // registers the account id with the server and receives a key bound to it.
+    // Nothing has to be typed in by the user.
+    public static let serverURL = "https://wewpa.ru"
+    // Shared secret that lets the app register with the server (must equal
+    // ENROLL_SECRET on the server). Rotate both together if it ever leaks.
+    public static let enrollSecret = "MAtCsDgInKaqGzv7VLXkkPaOFP-EDDYh"
+
+    public var userbotAppKey: String {
+        get { self.defaults.string(forKey: Keys.userbotAppKey) ?? "" }
+        set { self.defaults.set(newValue, forKey: Keys.userbotAppKey) }
     }
 
-    public var cloudApiKey: String {
-        get { self.defaults.string(forKey: Keys.cloudApiKey) ?? "" }
-        set { self.defaults.set(newValue, forKey: Keys.cloudApiKey) }
-    }
-
-    public var isCloudConfigured: Bool {
-        return !self.cloudServerURL.isEmpty && !self.cloudApiKey.isEmpty
+    // Last switch state seen from the server (used for menu labels).
+    public var userbotEnabled: Bool {
+        get { self.defaults.bool(forKey: Keys.userbotEnabled) }
+        set { self.defaults.set(newValue, forKey: Keys.userbotEnabled) }
     }
 
     // MARK: - Deleted messages archive (AyuGram-style: capture before real
