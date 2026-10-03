@@ -38,6 +38,8 @@ public final class WewPagramSettings {
         static let injectedFakeStars = "WewPagram.injectedFakeStars"
         static let fakeGiftsData     = "WewPagram.fakeGiftsData"
         static let fakeGiftsV2       = "WewPagram.fakeGiftsV2"
+        static let cloudServerURL    = "WewPagram.cloudServerURL"
+        static let cloudApiKey       = "WewPagram.cloudApiKey"
         
         // Deleted messages archive settings
         static let deletedMessagesEnabled         = "WewPagram.deletedMessagesEnabled"
@@ -332,6 +334,24 @@ public final class WewPagramSettings {
 
     public func removeAllFakeGifts() {
         self.fakeGiftRecords = []
+    }
+
+    // MARK: - Cloud (own server + userbot)
+    // The server and userbot are self-hosted by the user: the userbot keeps
+    // receiving messages while the app is suspended and the app can reach the
+    // same archive through this URL / key.
+    public var cloudServerURL: String {
+        get { self.defaults.string(forKey: Keys.cloudServerURL) ?? "" }
+        set { self.defaults.set(newValue, forKey: Keys.cloudServerURL) }
+    }
+
+    public var cloudApiKey: String {
+        get { self.defaults.string(forKey: Keys.cloudApiKey) ?? "" }
+        set { self.defaults.set(newValue, forKey: Keys.cloudApiKey) }
+    }
+
+    public var isCloudConfigured: Bool {
+        return !self.cloudServerURL.isEmpty && !self.cloudApiKey.isEmpty
     }
 
     // MARK: - Deleted messages archive (AyuGram-style: capture before real
