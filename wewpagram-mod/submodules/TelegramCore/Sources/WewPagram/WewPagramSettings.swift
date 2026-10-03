@@ -11,7 +11,11 @@ import SwiftSignalKit
 // read/write: reading it returns true iff every sub-toggle is on; writing
 // it flips every sub-toggle in lockstep. Older call sites keep working.
 public final class WewPagramSettings {
-    public static let shared = WewPagramSettings()
+    public static let shared: WewPagramSettings = {
+        let instance = WewPagramSettings()
+        instance.migrateBalanceIfNeeded()
+        return instance
+    }()
 
     private let defaults = UserDefaults.standard
 
@@ -39,6 +43,8 @@ public final class WewPagramSettings {
         static let fakeGiftsData     = "WewPagram.fakeGiftsData"
         static let fakeGiftsV2       = "WewPagram.fakeGiftsV2"
         static let cloudServerURL    = "WewPagram.cloudServerURL"
+        static let fakeBalanceEnabled = "WewPagram.fakeBalanceEnabled"
+        static let fakeBalanceStars   = "WewPagram.fakeBalanceStars"
         static let cloudApiKey       = "WewPagram.cloudApiKey"
         
         // Deleted messages archive settings
@@ -218,6 +224,44 @@ public final class WewPagramSettings {
     public var injectedFakeStars: Int {
         get { self.defaults.object(forKey: Keys.injectedFakeStars) as? Int ?? 0 }
         set { self.defaults.set(newValue, forKey: Keys.injectedFakeStars) }
+    }
+
+    // MARK: - Fake balance (Stars). Independent from the profile rating.
+    public var fakeBalanceEnabled: Bool {
+        get { self.defaults.bool(forKey: Keys.fakeBalanceEnabled) }
+        set { self.defaults.set(newValue, forKey: Keys.fakeBalanceEnabled) }
+    }
+
+    public var fakeBalanceStars: Int {
+        get { self.defaults.object(forKey: Keys.fakeBalanceStars) as? Int ?? 0 }
+        set { self.defaults.set(max(0, min(newValue, 999_999_999)), forKey: Keys.fakeBalanceStars) }
+    }
+
+    // Before the split the rating's "stars" value was also the injected
+    // balance. Carry that over once so existing users keep what they had.
+    fileprivate func migrateBalanceIfNeeded() {
+        if self.defaults.object(forKey: Keys.fakeBalanceStars) == nil {
+            self.defaults.set(self.defaults.bool(forKey: Keys.fakeRatingEnabled), forKey: Keys.fakeBalanceEnabled)
+            self.defaults.set(self.defaults.object(forKey: Keys.fakeRatingStars) as? Int ?? 0, forKey: Keys.fakeBalanceStars)
+        }
+    }
+
+    // Bumped whenever any profile value changes so the "Профиль" menu can
+    // refresh its row labels after a sub-screen edits something.
+    public let profileRevision = ValuePromise<Int>(0, ignoreRepeated: false)
+    private var profileRevisionCounter = 0
+
+    public func notifyProfileChanged() {
+        self.profileRevisionCounter += 1
+        self.profileRevision.set(self.profileRevisionCounter)
+    }
+
+    public var ghostEnabledCount: Int {
+        return Self.ghostSubKeys.filter { self.defaults.bool(forKey: $0) }.count
+    }
+
+    public static var ghostTotalCount: Int {
+        return ghostSubKeys.count
     }
 
     // MARK: - Fake gifts (local-only, cosmetic - never sent to the server)

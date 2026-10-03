@@ -8,107 +8,75 @@ import ItemListUI
 import PresentationDataUtils
 import AccountContext
 
-private let wewVersion = "1.0"
-
 private final class WewPagramHubControllerArguments {
     let openGhostMode: () -> Void
     let openDeletedMessages: () -> Void
     let openFakeIdentity: () -> Void
-    let openCloud: () -> Void
+    let openUserbot: () -> Void
 
-    init(openGhostMode: @escaping () -> Void, openDeletedMessages: @escaping () -> Void, openFakeIdentity: @escaping () -> Void, openCloud: @escaping () -> Void) {
+    init(openGhostMode: @escaping () -> Void, openDeletedMessages: @escaping () -> Void, openFakeIdentity: @escaping () -> Void, openUserbot: @escaping () -> Void) {
         self.openGhostMode = openGhostMode
         self.openDeletedMessages = openDeletedMessages
         self.openFakeIdentity = openFakeIdentity
-        self.openCloud = openCloud
+        self.openUserbot = openUserbot
     }
 }
 
 private enum WewPagramHubEntry: ItemListNodeEntry {
-    enum StableId: Hashable {
-        case privacyHeader, ghostMode, deletedMessages
-        case customizeHeader, fakeIdentity
-        case integrationHeader, cloud
-        case about
-    }
-
-    case privacyHeader
+    case header
     case ghostMode(String)
     case deletedMessages(String)
-    case customizeHeader
     case fakeIdentity
-    case integrationHeader
-    case cloud(String)
-    case about
+    case userbot(String)
 
     var section: ItemListSectionId {
         switch self {
-        case .privacyHeader, .ghostMode, .deletedMessages:
+        case .header:
             return 0
-        case .customizeHeader, .fakeIdentity:
+        case .ghostMode, .deletedMessages:
             return 1
-        case .integrationHeader, .cloud, .about:
+        case .fakeIdentity:
             return 2
+        case .userbot:
+            return 3
         }
     }
 
-    var stableId: StableId {
+    var stableId: Int {
         switch self {
-        case .privacyHeader: return .privacyHeader
-        case .ghostMode: return .ghostMode
-        case .deletedMessages: return .deletedMessages
-        case .customizeHeader: return .customizeHeader
-        case .fakeIdentity: return .fakeIdentity
-        case .integrationHeader: return .integrationHeader
-        case .cloud: return .cloud
-        case .about: return .about
-        }
-    }
-
-    private var sortIndex: Int {
-        switch self {
-        case .privacyHeader: return 0
+        case .header: return 0
         case .ghostMode: return 1
         case .deletedMessages: return 2
-        case .customizeHeader: return 3
-        case .fakeIdentity: return 4
-        case .integrationHeader: return 5
-        case .cloud: return 6
-        case .about: return 7
+        case .fakeIdentity: return 3
+        case .userbot: return 4
         }
     }
 
     static func < (lhs: WewPagramHubEntry, rhs: WewPagramHubEntry) -> Bool {
-        return lhs.sortIndex < rhs.sortIndex
+        return lhs.stableId < rhs.stableId
     }
 
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! WewPagramHubControllerArguments
         switch self {
-        case .privacyHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "ПРИВАТНОСТЬ", sectionId: self.section)
+        case .header:
+            return WewPagramHeaderItem(presentationData: presentationData, icon: wewLogoImage(side: 84.0), name: "WewPagram", version: wewVersionString, sectionId: self.section)
         case let .ghostMode(label):
-            return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.security, title: "Режим призрака", label: label, sectionId: self.section, style: .blocks, action: {
+            return ItemListDisclosureItem(presentationData: presentationData, icon: wewGhostIcon(), title: "Режим призрака", label: label, sectionId: self.section, style: .blocks, action: {
                 arguments.openGhostMode()
             })
         case let .deletedMessages(label):
             return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.deleteChats, title: "Удалённые сообщения", label: label, sectionId: self.section, style: .blocks, action: {
                 arguments.openDeletedMessages()
             })
-        case .customizeHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "КАСТОМИЗАЦИЯ", sectionId: self.section)
         case .fakeIdentity:
             return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.myProfile, title: "Профиль", label: "", sectionId: self.section, style: .blocks, action: {
                 arguments.openFakeIdentity()
             })
-        case .integrationHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "ИНТЕГРАЦИЯ", sectionId: self.section)
-        case let .cloud(label):
-            return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.bot, title: "Облако и юзербот", label: label, sectionId: self.section, style: .blocks, action: {
-                arguments.openCloud()
+        case let .userbot(label):
+            return ItemListDisclosureItem(presentationData: presentationData, icon: PresentationResourcesSettings.bot, title: "Юзербот", label: label, sectionId: self.section, style: .blocks, action: {
+                arguments.openUserbot()
             })
-        case .about:
-            return ItemListTextItem(presentationData: presentationData, text: .plain("WewPagram \(wewVersion)\nВсё, что вы настроили здесь, хранится только на вашем устройстве."), sectionId: self.section)
         }
     }
 }
@@ -126,23 +94,33 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
         openFakeIdentity: {
             pushControllerImpl?(wewpagramFakeIdentityController(context: context))
         },
-        openCloud: {
-            pushControllerImpl?(wewpagramCloudController(context: context))
+        openUserbot: {
+            pushControllerImpl?(wewpagramUserbotController(context: context))
         }
     )
 
     let signal = context.sharedContext.presentationData
     |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let settings = WewPagramSettings.shared
-        let ghostLabel = settings.isGhostModeEnabled ? "Вкл" : "Выкл"
-        let archiveCount = settings.deletedMessages().count
-        let deletedLabel = archiveCount == 0 ? "" : "\(archiveCount)"
-        let cloudLabel = settings.isCloudConfigured ? "Подключено" : "Выкл"
+
+        let ghostCount = settings.ghostEnabledCount
+        let ghostLabel: String
+        if ghostCount == 0 {
+            ghostLabel = "Выкл"
+        } else if ghostCount == WewPagramSettings.ghostTotalCount {
+            ghostLabel = "Вкл"
+        } else {
+            ghostLabel = "\(ghostCount)/\(WewPagramSettings.ghostTotalCount)"
+        }
+        let deletedLabel = settings.deletedMessagesEnabled ? "Вкл" : "Выкл"
+        let userbotLabel = settings.isCloudConfigured ? "Настроен" : ""
 
         let entries: [WewPagramHubEntry] = [
-            .privacyHeader, .ghostMode(ghostLabel), .deletedMessages(deletedLabel),
-            .customizeHeader, .fakeIdentity,
-            .integrationHeader, .cloud(cloudLabel), .about
+            .header,
+            .ghostMode(ghostLabel),
+            .deletedMessages(deletedLabel),
+            .fakeIdentity,
+            .userbot(userbotLabel)
         ]
 
         let controllerState = ItemListControllerState(

@@ -7,20 +7,121 @@ import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
 import AccountContext
+import ReactionImageComponent
 
+// MARK: - Shared helpers
+
+// One generic list entry that carries its own builder. `signature` describes
+// everything that affects how the row looks, so the list only re-renders a
+// row when its content really changed.
+private final class WewEntry: ItemListNodeEntry {
+    let order: Int
+    let sectionValue: ItemListSectionId
+    let signature: String
+    let build: (ItemListPresentationData) -> ListViewItem
+
+    init(order: Int, section: ItemListSectionId, signature: String, build: @escaping (ItemListPresentationData) -> ListViewItem) {
+        self.order = order
+        self.sectionValue = section
+        self.signature = signature
+        self.build = build
+    }
+
+    var section: ItemListSectionId { return self.sectionValue }
+    var stableId: Int { return self.order }
+
+    static func == (lhs: WewEntry, rhs: WewEntry) -> Bool {
+        return lhs.order == rhs.order && lhs.sectionValue == rhs.sectionValue && lhs.signature == rhs.signature
+    }
+
+    static func < (lhs: WewEntry, rhs: WewEntry) -> Bool {
+        return lhs.order < rhs.order
+    }
+
+    func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
+        return self.build(presentationData)
+    }
+}
+
+private struct WewNoArguments {}
+
+private func wewListController(context: AccountContext, title: String, entries: Signal<[WewEntry], NoError>) -> ItemListController {
+    let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, entries)
+    |> map { presentationData, entries -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        let controllerState = ItemListControllerState(
+            presentationData: ItemListPresentationData(presentationData),
+            title: .text(title),
+            leftNavigationButton: nil,
+            rightNavigationButton: nil,
+            backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back)
+        )
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks)
+        return (controllerState, (listState, WewNoArguments()))
+    }
+    return ItemListController(context: context, state: signal)
+}
+
+private func wewHeader(_ order: Int, _ section: ItemListSectionId, _ text: String) -> WewEntry {
+    return WewEntry(order: order, section: section, signature: "h|" + text, build: { pd in
+        return ItemListSectionHeaderItem(presentationData: pd, text: text, sectionId: section)
+    })
+}
+
+private func wewInput(_ order: Int, _ section: ItemListSectionId, title: String, text: String, placeholder: String, number: Bool = false, update: @escaping (String) -> Void) -> WewEntry {
+    return WewEntry(order: order, section: section, signature: "i|\(title)|\(text)|\(placeholder)", build: { pd in
+        let type: ItemListSingleLineInputItemType = number ? .number : .regular(capitalization: false, autocorrection: false)
+        return ItemListSingleLineInputItem(presentationData: pd, title: NSAttributedString(string: title), text: text, placeholder: placeholder, type: type, sectionId: section, textUpdated: { update($0) }, action: {})
+    })
+}
+
+private func wewSwitch(_ order: Int, _ section: ItemListSectionId, icon: UIImage?, title: String, value: Bool, update: @escaping (Bool) -> Void) -> WewEntry {
+    return WewEntry(order: order, section: section, signature: "s|\(title)|\(value)", build: { pd in
+        return ItemListSwitchItem(presentationData: pd, icon: icon, title: title, value: value, sectionId: section, style: .blocks, updated: { update($0) })
+    })
+}
+
+private func wewAction(_ order: Int, _ section: ItemListSectionId, title: String, destructive: Bool = false, action: @escaping () -> Void) -> WewEntry {
+    return WewEntry(order: order, section: section, signature: "a|\(title)", build: { pd in
+        return ItemListActionItem(presentationData: pd, title: title, kind: destructive ? .destructive : .generic, alignment: .natural, sectionId: section, style: .blocks, action: action)
+    })
+}
+
+private func wewRow(_ order: Int, _ section: ItemListSectionId, icon: UIImage?, title: String, label: String, action: (() -> Void)?) -> WewEntry {
+    return WewEntry(order: order, section: section, signature: "r|\(title)|\(label)|\(icon != nil)", build: { pd in
+        return ItemListDisclosureItem(presentationData: pd, icon: icon, title: title, label: label, sectionId: section, style: .blocks, disclosureStyle: action == nil ? .none : .arrow, action: action)
+    })
+}
+
+private func wewConfirm(context: AccountContext, controller: ViewController?, text: String, confirmTitle: String, handler: @escaping () -> Void) {
+    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+    let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: text, actions: [
+        TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {}),
+        TextAlertAction(type: .destructiveAction, title: confirmTitle, action: handler)
+    ])
+    controller?.present(alert, in: .window(.root))
+}
+
+// Balance is applied on top of the real Stars balance as a delta, so toggling
+// or editing the fake amount never compounds.
 private func wewApplyStarsDelta(context: AccountContext, settings: WewPagramSettings) {
-    let target = settings.fakeRatingEnabled ? settings.fakeRatingStars : 0
+    let target = settings.fakeBalanceEnabled ? settings.fakeBalanceStars : 0
     let delta = target - settings.injectedFakeStars
     guard delta != 0, let starsContext = context.starsContext else { return }
     starsContext.add(balance: StarsAmount(value: Int64(delta), nanos: 0))
     settings.injectedFakeStars = target
 }
 
-// Encodes a chosen real gift and stores it in WewPagramSettings. We
-// deliberately do NOT touch the real synced ProfileGiftsContext/Postbox
-// state — any real network sync would just wipe it out again. Instead this
-// gets merged into the displayed grid at render time (GiftsListView.swift).
-private func wewSaveFakeGift(_ pick: StarGift, completion: @escaping (Bool) -> Void) {
+private func wewNumberText(_ value: Int) -> String {
+    return value == 0 ? "" : String(value)
+}
+
+// MARK: - Gift storage helper
+
+// Encodes a chosen real gift and stores it locally. We deliberately do NOT
+// touch the real synced ProfileGiftsContext/Postbox state - any real network
+// sync would just wipe it out. It is merged into the displayed grid at render
+// time (GiftsListView.swift).
+private func wewSaveFakeGift(_ pick: StarGift) -> Bool {
     let fakeEntry = ProfileGiftsContext.State.StarGift(
         gift: pick,
         reference: nil,
@@ -47,11 +148,10 @@ private func wewSaveFakeGift(_ pick: StarGift, completion: @escaping (Bool) -> V
         canCraftAt: nil
     )
     guard let encoded = try? JSONEncoder().encode(fakeEntry) else {
-        completion(false)
-        return
+        return false
     }
     WewPagramSettings.shared.addFakeGiftData(encoded)
-    completion(true)
+    return true
 }
 
 private struct WewFakeGiftRow: Equatable {
@@ -60,9 +160,10 @@ private struct WewFakeGiftRow: Equatable {
     var label: String
 }
 
-private func wewFakeGiftRows() -> [WewFakeGiftRow] {
+private func wewFakeGiftRows() -> (rows: [WewFakeGiftRow], files: [Int64: TelegramMediaFile]) {
     let decoder = JSONDecoder()
     var rows: [WewFakeGiftRow] = []
+    var files: [Int64: TelegramMediaFile] = [:]
     for (index, record) in WewPagramSettings.shared.fakeGiftRecords.enumerated() {
         var title = "Подарок #\(index + 1)"
         var label = ""
@@ -73,8 +174,15 @@ private func wewFakeGiftRows() -> [WewFakeGiftRow] {
                     title = t
                 }
                 label = "\(generic.price) ★"
+                files[record.id] = generic.file
             case let .unique(unique):
                 title = "\(unique.title) #\(unique.number)"
+                for attribute in unique.attributes {
+                    if case let .model(_, file, _, _) = attribute {
+                        files[record.id] = file
+                        break
+                    }
+                }
             }
         }
         var flags: [String] = []
@@ -85,360 +193,272 @@ private func wewFakeGiftRows() -> [WewFakeGiftRow] {
         }
         rows.append(WewFakeGiftRow(id: record.id, title: title, label: label))
     }
-    return rows
+    return (rows, files)
 }
 
-private final class WewPagramFakeIdentityControllerArguments {
-    let updateFakePhoneNumber: (String) -> Void
-    let updateNewNftUsername: (String) -> Void
-    let updateNewNftPrice: (String) -> Void
-    let addNftEntry: () -> Void
-    let removeNftEntry: (Int) -> Void
-    let toggleFakeRating: (Bool) -> Void
-    let updateFakeRatingLevel: (String) -> Void
-    let updateFakeRatingStars: (String) -> Void
-    let addGift: () -> Void
-    let removeGift: (Int64) -> Void
-    let removeAllGifts: () -> Void
+// MARK: - Phone number
 
-    init(
-        updateFakePhoneNumber: @escaping (String) -> Void,
-        updateNewNftUsername: @escaping (String) -> Void,
-        updateNewNftPrice: @escaping (String) -> Void,
-        addNftEntry: @escaping () -> Void,
-        removeNftEntry: @escaping (Int) -> Void,
-        toggleFakeRating: @escaping (Bool) -> Void,
-        updateFakeRatingLevel: @escaping (String) -> Void,
-        updateFakeRatingStars: @escaping (String) -> Void,
-        addGift: @escaping () -> Void,
-        removeGift: @escaping (Int64) -> Void,
-        removeAllGifts: @escaping () -> Void
-    ) {
-        self.updateFakePhoneNumber = updateFakePhoneNumber
-        self.updateNewNftUsername = updateNewNftUsername
-        self.updateNewNftPrice = updateNewNftPrice
-        self.addNftEntry = addNftEntry
-        self.removeNftEntry = removeNftEntry
-        self.toggleFakeRating = toggleFakeRating
-        self.updateFakeRatingLevel = updateFakeRatingLevel
-        self.updateFakeRatingStars = updateFakeRatingStars
-        self.addGift = addGift
-        self.removeGift = removeGift
-        self.removeAllGifts = removeAllGifts
+private func wewPhoneController(context: AccountContext) -> ViewController {
+    let settings = WewPagramSettings.shared
+    let state = ValuePromise<String>(settings.fakePhoneNumber ?? "", ignoreRepeated: true)
+
+    let entries = state.get() |> map { value -> [WewEntry] in
+        return [
+            wewHeader(0, 0, "НОМЕР В ПРОФИЛЕ"),
+            wewInput(1, 0, title: "Номер", text: value, placeholder: "+7 900 000-00-00", update: { text in
+                let trimmed = text.trimmingCharacters(in: .whitespaces)
+                settings.fakePhoneNumber = trimmed.isEmpty ? nil : trimmed
+                settings.notifyProfileChanged()
+                state.set(text)
+            })
+        ]
     }
+    return wewListController(context: context, title: "Номер телефона", entries: entries)
 }
 
-private struct WewPagramFakeIdentityState: Equatable {
-    var fakePhoneNumber: String
-    var nftEntries: [WewPagramSettings.FakeNftEntry]
-    var newNftUsername: String
-    var newNftPrice: String
-    var fakeRatingEnabled: Bool
-    var fakeRatingLevel: String
-    var fakeRatingStars: String
-    var fakeGifts: [WewFakeGiftRow]
+// MARK: - NFT usernames
+
+private struct WewNftState: Equatable {
+    var entries: [WewPagramSettings.FakeNftEntry]
+    var newUsername: String
+    var newPrice: String
 }
 
-private enum WewPagramFakeIdentityEntry: ItemListNodeEntry {
-    enum StableId: Hashable {
-        case phoneNumber
-        case nftHeader
-        case nftEntry(Int)
-        case nftAddUsername
-        case nftAddPrice
-        case nftAddButton
-        case ratingHeader
-        case ratingToggle
-        case ratingLevel
-        case ratingStars
-        case giftsHeader
-        case giftsAddButton
-        case giftEntry(Int64)
-        case giftsDeleteAll
+private func wewNftController(context: AccountContext) -> ViewController {
+    let settings = WewPagramSettings.shared
+    let initial = WewNftState(entries: settings.fakeNftEntries, newUsername: "", newPrice: "")
+    let state = ValuePromise<WewNftState>(initial, ignoreRepeated: true)
+    let stateValue = Atomic(value: initial)
+    let update: ((WewNftState) -> WewNftState) -> Void = { f in
+        state.set(stateValue.modify(f))
     }
 
-    case phoneNumber(String)
-    case nftHeader(String)
-    case nftEntry(index: Int, username: String, price: String)
-    case nftAddUsername(String)
-    case nftAddPrice(String)
-    case nftAddButton
-    case ratingHeader(String)
-    case ratingToggle(Bool)
-    case ratingLevel(String)
-    case ratingStars(String)
-    case giftsHeader(String)
-    case giftsAddButton
-    case giftEntry(index: Int, id: Int64, title: String, label: String)
-    case giftsDeleteAll
+    var controllerRef: ViewController?
 
-    var section: ItemListSectionId {
-        switch self {
-        case .phoneNumber:
-            return 0
-        case .nftHeader, .nftEntry, .nftAddUsername, .nftAddPrice, .nftAddButton:
-            return 1
-        case .ratingHeader, .ratingToggle, .ratingLevel, .ratingStars:
-            return 2
-        case .giftsHeader, .giftsAddButton, .giftEntry, .giftsDeleteAll:
-            return 3
+    let entries = state.get() |> map { s -> [WewEntry] in
+        var result: [WewEntry] = [wewHeader(0, 0, "ВАШИ NFT-ЮЗЕРНЕЙМЫ")]
+        for (index, entry) in s.entries.enumerated() {
+            result.append(wewRow(10 + index, 0, icon: PresentationResourcesSettings.ton, title: "@" + entry.username, label: entry.price, action: {
+                wewConfirm(context: context, controller: controllerRef, text: "Удалить @\(entry.username)?", confirmTitle: "Удалить", handler: {
+                    settings.removeFakeNftEntry(at: index)
+                    settings.notifyProfileChanged()
+                    update { var n = $0; n.entries = settings.fakeNftEntries; return n }
+                })
+            }))
         }
+        result.append(wewHeader(1000, 1, "ДОБАВИТЬ"))
+        result.append(wewInput(1001, 1, title: "Юзернейм", text: s.newUsername, placeholder: "username", update: { text in
+            update { var n = $0; n.newUsername = text; return n }
+        }))
+        result.append(wewInput(1002, 1, title: "Цена", text: s.newPrice, placeholder: "например, 120 TON", update: { text in
+            update { var n = $0; n.newPrice = text; return n }
+        }))
+        result.append(wewAction(1003, 1, title: "Добавить", action: {
+            let current = stateValue.with { $0 }
+            let username = current.newUsername.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "@", with: "")
+            guard !username.isEmpty else { return }
+            settings.addFakeNftEntry(username: username, price: current.newPrice)
+            settings.notifyProfileChanged()
+            update { var n = $0; n.entries = settings.fakeNftEntries; n.newUsername = ""; n.newPrice = ""; return n }
+        }))
+        return result
     }
-
-    var stableId: StableId {
-        switch self {
-        case .phoneNumber: return .phoneNumber
-        case .nftHeader: return .nftHeader
-        case let .nftEntry(index, _, _): return .nftEntry(index)
-        case .nftAddUsername: return .nftAddUsername
-        case .nftAddPrice: return .nftAddPrice
-        case .nftAddButton: return .nftAddButton
-        case .ratingHeader: return .ratingHeader
-        case .ratingToggle: return .ratingToggle
-        case .ratingLevel: return .ratingLevel
-        case .ratingStars: return .ratingStars
-        case .giftsHeader: return .giftsHeader
-        case .giftsAddButton: return .giftsAddButton
-        case let .giftEntry(_, id, _, _): return .giftEntry(id)
-        case .giftsDeleteAll: return .giftsDeleteAll
-        }
-    }
-
-    private var sortIndex: Int {
-        switch self {
-        case .phoneNumber: return 0
-        case .nftHeader: return 1
-        case let .nftEntry(index, _, _): return 2 + index
-        case .nftAddUsername: return 1000
-        case .nftAddPrice: return 1001
-        case .nftAddButton: return 1002
-        case .ratingHeader: return 1003
-        case .ratingToggle: return 1004
-        case .ratingLevel: return 1005
-        case .ratingStars: return 1006
-        case .giftsHeader: return 1007
-        case .giftsAddButton: return 1008
-        case let .giftEntry(index, _, _, _): return 1100 + index
-        case .giftsDeleteAll: return 100000
-        }
-    }
-
-    static func ==(lhs: WewPagramFakeIdentityEntry, rhs: WewPagramFakeIdentityEntry) -> Bool {
-        switch lhs {
-        case let .phoneNumber(v): if case .phoneNumber(v) = rhs { return true } else { return false }
-        case let .nftHeader(v): if case .nftHeader(v) = rhs { return true } else { return false }
-        case let .nftEntry(i, u, p): if case .nftEntry(i, u, p) = rhs { return true } else { return false }
-        case let .nftAddUsername(v): if case .nftAddUsername(v) = rhs { return true } else { return false }
-        case let .nftAddPrice(v): if case .nftAddPrice(v) = rhs { return true } else { return false }
-        case .nftAddButton: if case .nftAddButton = rhs { return true } else { return false }
-        case let .ratingHeader(v): if case .ratingHeader(v) = rhs { return true } else { return false }
-        case let .ratingToggle(v): if case .ratingToggle(v) = rhs { return true } else { return false }
-        case let .ratingLevel(v): if case .ratingLevel(v) = rhs { return true } else { return false }
-        case let .ratingStars(v): if case .ratingStars(v) = rhs { return true } else { return false }
-        case let .giftsHeader(v): if case .giftsHeader(v) = rhs { return true } else { return false }
-        case .giftsAddButton: if case .giftsAddButton = rhs { return true } else { return false }
-        case let .giftEntry(i, id, t, l): if case .giftEntry(i, id, t, l) = rhs { return true } else { return false }
-        case .giftsDeleteAll: if case .giftsDeleteAll = rhs { return true } else { return false }
-        }
-    }
-
-    static func <(lhs: WewPagramFakeIdentityEntry, rhs: WewPagramFakeIdentityEntry) -> Bool {
-        return lhs.sortIndex < rhs.sortIndex
-    }
-
-    func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
-        let arguments = arguments as! WewPagramFakeIdentityControllerArguments
-        switch self {
-        case let .phoneNumber(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Номер"), text: value, placeholder: "", sectionId: self.section, textUpdated: { arguments.updateFakePhoneNumber($0) }, action: {})
-        case let .nftHeader(text):
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
-        case let .nftEntry(index, username, price):
-            let label = price.isEmpty ? "" : price
-            return ItemListDisclosureItem(presentationData: presentationData, title: "@\(username)", label: label, sectionId: self.section, style: .blocks, action: {
-                arguments.removeNftEntry(index)
-            })
-        case let .nftAddUsername(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "NFT юз"), text: value, placeholder: "", sectionId: self.section, textUpdated: { arguments.updateNewNftUsername($0) }, action: {})
-        case let .nftAddPrice(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Цена"), text: value, placeholder: "", sectionId: self.section, textUpdated: { arguments.updateNewNftPrice($0) }, action: {})
-        case .nftAddButton:
-            return ItemListActionItem(presentationData: presentationData, title: "Добавить NFT юз", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
-                arguments.addNftEntry()
-            })
-        case let .ratingHeader(text):
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
-        case let .ratingToggle(value):
-            return ItemListSwitchItem(presentationData: presentationData, title: "Рейтинг", value: value, sectionId: self.section, style: .blocks, updated: { arguments.toggleFakeRating($0) })
-        case let .ratingLevel(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Уровень"), text: value, placeholder: "1", sectionId: self.section, textUpdated: { arguments.updateFakeRatingLevel($0) }, action: {})
-        case let .ratingStars(value):
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(string: "Баланс"), text: value, placeholder: "0", sectionId: self.section, textUpdated: { arguments.updateFakeRatingStars($0) }, action: {})
-        case let .giftsHeader(text):
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
-        case .giftsAddButton:
-            return ItemListActionItem(presentationData: presentationData, title: "Выбрать подарок", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
-                arguments.addGift()
-            })
-        case let .giftEntry(_, id, title, label):
-            return ItemListDisclosureItem(presentationData: presentationData, title: title, label: label, sectionId: self.section, style: .blocks, action: {
-                arguments.removeGift(id)
-            })
-        case .giftsDeleteAll:
-            return ItemListActionItem(presentationData: presentationData, title: "Удалить все подарки", kind: .destructive, alignment: .natural, sectionId: self.section, style: .blocks, action: {
-                arguments.removeAllGifts()
-            })
-        }
-    }
+    let controller = wewListController(context: context, title: "NFT-юзернеймы", entries: entries)
+    controllerRef = controller
+    return controller
 }
+
+// MARK: - Rating
+
+private struct WewRatingState: Equatable {
+    var enabled: Bool
+    var level: String
+    var points: String
+}
+
+private func wewRatingController(context: AccountContext) -> ViewController {
+    let settings = WewPagramSettings.shared
+    let initial = WewRatingState(enabled: settings.fakeRatingEnabled, level: String(settings.fakeRatingLevel), points: wewNumberText(settings.fakeRatingStars))
+    let state = ValuePromise<WewRatingState>(initial, ignoreRepeated: true)
+    let stateValue = Atomic(value: initial)
+    let update: ((WewRatingState) -> WewRatingState) -> Void = { f in
+        state.set(stateValue.modify(f))
+    }
+
+    let entries = state.get() |> map { s -> [WewEntry] in
+        var result: [WewEntry] = [
+            wewSwitch(0, 0, icon: PresentationResourcesSettings.stats, title: "Показывать рейтинг", value: s.enabled, update: { value in
+                settings.fakeRatingEnabled = value
+                settings.notifyProfileChanged()
+                update { var n = $0; n.enabled = value; return n }
+            })
+        ]
+        if s.enabled {
+            result.append(wewHeader(10, 1, "ПАРАМЕТРЫ РЕЙТИНГА"))
+            result.append(wewInput(11, 1, title: "Уровень", text: s.level, placeholder: "1", number: true, update: { text in
+                settings.fakeRatingLevel = Int(text) ?? 1
+                settings.notifyProfileChanged()
+                update { var n = $0; n.level = text; return n }
+            }))
+            result.append(wewInput(12, 1, title: "Очки", text: s.points, placeholder: "0", number: true, update: { text in
+                settings.fakeRatingStars = Int(text) ?? 0
+                settings.notifyProfileChanged()
+                update { var n = $0; n.points = text; return n }
+            }))
+        }
+        return result
+    }
+    return wewListController(context: context, title: "Рейтинг", entries: entries)
+}
+
+// MARK: - Balance (Stars)
+
+private struct WewBalanceState: Equatable {
+    var enabled: Bool
+    var stars: String
+}
+
+private func wewBalanceController(context: AccountContext) -> ViewController {
+    let settings = WewPagramSettings.shared
+    let initial = WewBalanceState(enabled: settings.fakeBalanceEnabled, stars: wewNumberText(settings.fakeBalanceStars))
+    let state = ValuePromise<WewBalanceState>(initial, ignoreRepeated: true)
+    let stateValue = Atomic(value: initial)
+    let update: ((WewBalanceState) -> WewBalanceState) -> Void = { f in
+        state.set(stateValue.modify(f))
+    }
+
+    let entries = state.get() |> map { s -> [WewEntry] in
+        var result: [WewEntry] = [
+            wewSwitch(0, 0, icon: PresentationResourcesSettings.stars, title: "Свой баланс", value: s.enabled, update: { value in
+                settings.fakeBalanceEnabled = value
+                wewApplyStarsDelta(context: context, settings: settings)
+                settings.notifyProfileChanged()
+                update { var n = $0; n.enabled = value; return n }
+            })
+        ]
+        if s.enabled {
+            result.append(wewHeader(10, 1, "БАЛАНС ЗВЁЗД"))
+            result.append(wewInput(11, 1, title: "Звёзды", text: s.stars, placeholder: "0", number: true, update: { text in
+                settings.fakeBalanceStars = Int(text) ?? 0
+                wewApplyStarsDelta(context: context, settings: settings)
+                settings.notifyProfileChanged()
+                update { var n = $0; n.stars = text; return n }
+            }))
+        }
+        return result
+    }
+    return wewListController(context: context, title: "Баланс", entries: entries)
+}
+
+// MARK: - Gifts
+
+private struct WewGiftsState: Equatable {
+    var rows: [WewFakeGiftRow]
+    var icons: [Int64: UIImage]
+}
+
+private func wewGiftsController(context: AccountContext) -> ViewController {
+    let settings = WewPagramSettings.shared
+    let initialData = wewFakeGiftRows()
+    let initial = WewGiftsState(rows: initialData.rows, icons: [:])
+    let state = ValuePromise<WewGiftsState>(initial, ignoreRepeated: true)
+    let stateValue = Atomic(value: initial)
+    let update: ((WewGiftsState) -> WewGiftsState) -> Void = { f in
+        state.set(stateValue.modify(f))
+    }
+
+    var controllerRef: ViewController?
+    var requestedIcons = Set<Int64>()
+    let disposables = DisposableSet()
+
+    // Renders the first frame of each gift's animation into a small square tile.
+    let loadIcons: ([Int64: TelegramMediaFile]) -> Void = { files in
+        for (id, file) in files where !requestedIcons.contains(id) {
+            requestedIcons.insert(id)
+            let disposable = (reactionStaticImage(context: context, animation: file, pixelSize: CGSize(width: 96.0, height: 96.0), queue: sharedReactionStaticImage)
+            |> deliverOnMainQueue).start(next: { data in
+                guard data.isComplete, let raw = try? Data(contentsOf: URL(fileURLWithPath: data.path)), let image = UIImage(data: raw), let tile = wewGiftTile(image) else {
+                    return
+                }
+                update { var n = $0; n.icons[id] = tile; return n }
+            })
+            disposables.add(disposable)
+        }
+    }
+
+    let refresh: () -> Void = {
+        let data = wewFakeGiftRows()
+        update { var n = $0; n.rows = data.rows; return n }
+        loadIcons(data.files)
+        settings.notifyProfileChanged()
+    }
+
+    let entries = state.get() |> map { s -> [WewEntry] in
+        var result: [WewEntry] = [
+            wewAction(0, 0, title: "Добавить подарок", action: {
+                let picker = wewpagramGiftPickerController(context: context) { picked in
+                    if wewSaveFakeGift(picked) {
+                        refresh()
+                    }
+                }
+                (controllerRef as? ItemListController)?.push(picker)
+            })
+        ]
+        if !s.rows.isEmpty {
+            result.append(wewHeader(10, 1, "ДОБАВЛЕННЫЕ · \(s.rows.count)"))
+            for (index, row) in s.rows.enumerated() {
+                let icon = s.icons[row.id]
+                result.append(wewRow(100 + index, 1, icon: icon, title: row.title, label: row.label, action: {
+                    wewConfirm(context: context, controller: controllerRef, text: "Удалить «\(row.title)» из профиля?", confirmTitle: "Удалить", handler: {
+                        settings.removeFakeGift(id: row.id)
+                        refresh()
+                    })
+                }))
+            }
+            result.append(wewAction(100000, 2, title: "Удалить все подарки", destructive: true, action: {
+                wewConfirm(context: context, controller: controllerRef, text: "Удалить все добавленные подарки?", confirmTitle: "Удалить все", handler: {
+                    settings.removeAllFakeGifts()
+                    refresh()
+                })
+            }))
+        }
+        return result
+    }
+
+    let controller = wewListController(context: context, title: "Подарки", entries: entries)
+    controllerRef = controller
+    loadIcons(initialData.files)
+    return controller
+}
+
+// MARK: - Profile menu
 
 public func wewpagramFakeIdentityController(context: AccountContext) -> ViewController {
     let settings = WewPagramSettings.shared
-    let initialState = WewPagramFakeIdentityState(
-        fakePhoneNumber: settings.fakePhoneNumber ?? "",
-        nftEntries: settings.fakeNftEntries,
-        newNftUsername: "",
-        newNftPrice: "",
-        fakeRatingEnabled: settings.fakeRatingEnabled,
-        fakeRatingLevel: String(settings.fakeRatingLevel),
-        fakeRatingStars: String(settings.fakeRatingStars),
-        fakeGifts: wewFakeGiftRows()
-    )
-    let statePromise = ValuePromise<WewPagramFakeIdentityState>(initialState, ignoreRepeated: true)
-    let stateValue = Atomic(value: initialState)
-    let updateState: ((WewPagramFakeIdentityState) -> WewPagramFakeIdentityState) -> Void = { f in
-        statePromise.set(stateValue.modify(f))
+    var controllerRef: ViewController?
+
+    let push: (ViewController) -> Void = { c in
+        (controllerRef as? ItemListController)?.push(c)
     }
 
-    var presentControllerImpl: ((ViewController) -> Void)?
-    var pushControllerImpl: ((ViewController) -> Void)?
+    let entries = combineLatest(queue: .mainQueue(), settings.profileRevision.get(), settings.fakeGiftsRevision.get())
+    |> map { _, _ -> [WewEntry] in
+        let phone = settings.fakePhoneNumber ?? ""
+        let nftCount = settings.fakeNftEntries.count
+        let ratingLabel = settings.fakeRatingEnabled ? "Ур. \(settings.fakeRatingLevel)" : "Выкл"
+        let balanceLabel = settings.fakeBalanceEnabled ? "\(settings.fakeBalanceStars) ★" : "Выкл"
+        let giftCount = settings.fakeGiftRecords.count
 
-    wewApplyStarsDelta(context: context, settings: settings)
-
-    let arguments = WewPagramFakeIdentityControllerArguments(
-        updateFakePhoneNumber: { value in
-            settings.fakePhoneNumber = value.isEmpty ? nil : value
-            updateState { var s = $0; s.fakePhoneNumber = value; return s }
-        },
-        updateNewNftUsername: { value in
-            updateState { var s = $0; s.newNftUsername = value; return s }
-        },
-        updateNewNftPrice: { value in
-            updateState { var s = $0; s.newNftPrice = value; return s }
-        },
-        addNftEntry: {
-            let current = stateValue.with { $0 }
-            let username = current.newNftUsername.trimmingCharacters(in: .whitespaces)
-            guard !username.isEmpty else { return }
-            settings.addFakeNftEntry(username: username, price: current.newNftPrice)
-            updateState { var s = $0; s.nftEntries = settings.fakeNftEntries; s.newNftUsername = ""; s.newNftPrice = ""; return s }
-        },
-        removeNftEntry: { index in
-            let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-            let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: "Удалить этот NFT юз?", actions: [
-                TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {}),
-                TextAlertAction(type: .destructiveAction, title: "Удалить", action: {
-                    settings.removeFakeNftEntry(at: index)
-                    updateState { var s = $0; s.nftEntries = settings.fakeNftEntries; return s }
-                })
-            ])
-            presentControllerImpl?(alert)
-        },
-        toggleFakeRating: { value in
-            settings.fakeRatingEnabled = value
-            wewApplyStarsDelta(context: context, settings: settings)
-            updateState { var s = $0; s.fakeRatingEnabled = value; return s }
-        },
-        updateFakeRatingLevel: { value in
-            settings.fakeRatingLevel = Int(value) ?? 1
-            updateState { var s = $0; s.fakeRatingLevel = value; return s }
-        },
-        updateFakeRatingStars: { value in
-            settings.fakeRatingStars = Int(value) ?? 0
-            wewApplyStarsDelta(context: context, settings: settings)
-            updateState { var s = $0; s.fakeRatingStars = value; return s }
-        },
-        addGift: {
-            let picker = wewpagramGiftPickerController(context: context) { pickedGift in
-                wewSaveFakeGift(pickedGift) { success in
-                    guard success else { return }
-                    updateState { var s = $0; s.fakeGifts = wewFakeGiftRows(); return s }
-                }
-            }
-            pushControllerImpl?(picker)
-        },
-        removeGift: { id in
-            let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-            let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: "Удалить этот подарок из профиля?", actions: [
-                TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {}),
-                TextAlertAction(type: .destructiveAction, title: "Удалить", action: {
-                    settings.removeFakeGift(id: id)
-                    updateState { var s = $0; s.fakeGifts = wewFakeGiftRows(); return s }
-                })
-            ])
-            presentControllerImpl?(alert)
-        },
-        removeAllGifts: {
-            let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-            let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: "Удалить все добавленные подарки?", actions: [
-                TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {}),
-                TextAlertAction(type: .destructiveAction, title: "Удалить все", action: {
-                    settings.removeAllFakeGifts()
-                    updateState { var s = $0; s.fakeGifts = wewFakeGiftRows(); return s }
-                })
-            ])
-            presentControllerImpl?(alert)
-        }
-    )
-
-    let signal = combineLatest(queue: .mainQueue(),
-        context.sharedContext.presentationData,
-        statePromise.get()
-    )
-    |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        var entries: [WewPagramFakeIdentityEntry] = [
-            .phoneNumber(state.fakePhoneNumber),
-            .nftHeader("NFT ЮЗЕРНЕЙМЫ")
+        return [
+            wewRow(0, 0, icon: PresentationResourcesSettings.changePhoneNumber, title: "Номер телефона", label: phone, action: { push(wewPhoneController(context: context)) }),
+            wewRow(1, 0, icon: PresentationResourcesSettings.ton, title: "NFT-юзернеймы", label: nftCount == 0 ? "" : "\(nftCount)", action: { push(wewNftController(context: context)) }),
+            wewRow(10, 1, icon: PresentationResourcesSettings.stats, title: "Рейтинг", label: ratingLabel, action: { push(wewRatingController(context: context)) }),
+            wewRow(11, 1, icon: PresentationResourcesSettings.stars, title: "Баланс", label: balanceLabel, action: { push(wewBalanceController(context: context)) }),
+            wewRow(20, 2, icon: PresentationResourcesSettings.premiumGift, title: "Подарки", label: giftCount == 0 ? "" : "\(giftCount)", action: { push(wewGiftsController(context: context)) })
         ]
-        for (index, entry) in state.nftEntries.enumerated() {
-            entries.append(.nftEntry(index: index, username: entry.username, price: entry.price))
-        }
-        entries.append(.nftAddUsername(state.newNftUsername))
-        entries.append(.nftAddPrice(state.newNftPrice))
-        entries.append(.nftAddButton)
-        entries.append(.ratingHeader("РЕЙТИНГ"))
-        entries.append(.ratingToggle(state.fakeRatingEnabled))
-        if state.fakeRatingEnabled {
-            entries.append(.ratingLevel(state.fakeRatingLevel))
-            entries.append(.ratingStars(state.fakeRatingStars))
-        }
-        entries.append(.giftsHeader("ПОДАРКИ"))
-        entries.append(.giftsAddButton)
-        for (index, row) in state.fakeGifts.enumerated() {
-            entries.append(.giftEntry(index: index, id: row.id, title: row.title, label: row.label))
-        }
-        if !state.fakeGifts.isEmpty {
-            entries.append(.giftsDeleteAll)
-        }
-
-        let controllerState = ItemListControllerState(
-            presentationData: ItemListPresentationData(presentationData),
-            title: .text("Профиль"),
-            leftNavigationButton: nil,
-            rightNavigationButton: nil,
-            backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back)
-        )
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks)
-
-        return (controllerState, (listState, arguments))
     }
 
-    let controller = ItemListController(context: context, state: signal)
-    presentControllerImpl = { [weak controller] c in
-        controller?.present(c, in: .window(.root))
-    }
-    pushControllerImpl = { [weak controller] c in
-        controller?.push(c)
-    }
+    let controller = wewListController(context: context, title: "Профиль", entries: entries)
+    controllerRef = controller
     return controller
 }
