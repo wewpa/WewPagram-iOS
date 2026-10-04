@@ -92,6 +92,7 @@ public func wewpagramPluginsController(context: AccountContext) -> ViewControlle
     }
 
     let controller = wewListController(context: context, title: "Плагины", entries: entries)
+    controllerRef = controller
     return controller
 }
 
@@ -144,6 +145,7 @@ private func wewPluginDetailController(context: AccountContext, pluginId: String
     }
 
     let controller = wewListController(context: context, title: "Плагин", entries: entries)
+    controllerRef = controller
     return controller
 }
 
