@@ -61,7 +61,7 @@ public func wewpagramPluginsController(context: AccountContext) -> ViewControlle
     let manager = WewPluginManager.shared
     manager.startIfNeeded()
 
-    let controllerRef: ViewController?
+    var controllerRef: ViewController?
 
     let entries = manager.revision.get() |> deliverOnMainQueue |> map { _ -> [WewEntry] in
         let plugins = manager.installedPlugins()
@@ -92,6 +92,7 @@ public func wewpagramPluginsController(context: AccountContext) -> ViewControlle
     }
 
     let controller = wewListController(context: context, title: "Плагины", entries: entries)
+    controllerRef = controller
     return controller
 }
 
@@ -99,7 +100,7 @@ public func wewpagramPluginsController(context: AccountContext) -> ViewControlle
 
 private func wewPluginDetailController(context: AccountContext, pluginId: String) -> ViewController {
     let manager = WewPluginManager.shared
-    let controllerRef: ViewController?
+    var controllerRef: ViewController?
 
     let entries = manager.revision.get() |> deliverOnMainQueue |> map { _ -> [WewEntry] in
         guard let plugin = manager.plugin(id: pluginId) else {
@@ -144,6 +145,7 @@ private func wewPluginDetailController(context: AccountContext, pluginId: String
     }
 
     let controller = wewListController(context: context, title: "Плагин", entries: entries)
+    controllerRef = controller
     return controller
 }
 
