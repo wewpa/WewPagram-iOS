@@ -1,0 +1,9 @@
+{
+  "id": "test.privet",
+  "name": "Привет",
+  "version": "1.0.0",
+  "author": "WewPagram",
+  "description": "Тестовый плагин: здоровается при запуске и один раз в каждом разделе приложения.",
+  "icon": "icon.png",
+  "entry": "main.js"
+}

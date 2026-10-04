@@ -61,5 +61,10 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
 
     let controller = wewListController(context: context, title: "WewPagram", entries: entries)
     controllerRef = controller
+
+    // Plugins are told that the WewPagram menu was opened.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        manager.dispatchAll(event: "menu.open", args: [])
+    }
     return controller
 }

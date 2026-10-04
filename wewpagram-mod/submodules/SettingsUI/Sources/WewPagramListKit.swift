@@ -119,3 +119,11 @@ func wewText(_ order: Int, _ section: ItemListSectionId, text: String) -> WewEnt
         return ItemListTextItem(presentationData: pd, text: .plain(text), sectionId: section)
     })
 }
+
+func wewShowAlert(context: AccountContext, controller: ViewController?, text: String) {
+    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+    let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: text, actions: [
+        TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+    ])
+    controller?.present(alert, in: .window(.root))
+}

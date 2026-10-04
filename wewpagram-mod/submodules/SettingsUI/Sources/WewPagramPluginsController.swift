@@ -48,14 +48,6 @@ private func wewPickZip(from controller: ViewController?, completion: @escaping 
     controller?.present(picker, animated: true, completion: nil)
 }
 
-private func wewShowAlert(context: AccountContext, controller: ViewController?, text: String) {
-    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-    let alert = textAlertController(context: context, updatedPresentationData: nil, title: nil, text: text, actions: [
-        TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
-    ])
-    controller?.present(alert, in: .window(.root))
-}
-
 private func wewPluginIcon(_ plugin: WewPluginInfo) -> UIImage? {
     if let path = plugin.iconPath, let tile = wewPluginTile(path: path) {
         return tile
@@ -100,7 +92,6 @@ public func wewpagramPluginsController(context: AccountContext) -> ViewControlle
     }
 
     let controller = wewListController(context: context, title: "Плагины", entries: entries)
-    controllerRef = controller
     return controller
 }
 
@@ -153,7 +144,6 @@ private func wewPluginDetailController(context: AccountContext, pluginId: String
     }
 
     let controller = wewListController(context: context, title: "Плагин", entries: entries)
-    controllerRef = controller
     return controller
 }
 
@@ -206,11 +196,6 @@ public func wewpagramPluginPageController(context: AccountContext, pluginId: Str
         return result
     }
 
-    var controllerRef: ViewController?
-    manager.alertHandler = { name, text in
-        wewShowAlert(context: context, controller: controllerRef, text: "\(name): \(text)")
-    }
     let controller = wewListController(context: context, title: title, entries: entries)
-    controllerRef = controller
     return controller
 }

@@ -113,9 +113,6 @@ public final class WewPluginManager {
     public let revision = ValuePromise<Int>(0, ignoreRepeated: false)
     private var revisionCounter = 0
 
-    // UI hook for wew.alert(); the plugins screens set it while they are visible.
-    public var alertHandler: ((String, String) -> Void)?
-
     private let queue = DispatchQueue(label: "WewPagram.plugins")
     private let stateLock = NSLock()
     private var runtimes: [String: WewPluginRuntime] = [:]
@@ -140,6 +137,13 @@ public final class WewPluginManager {
     // MARK: Lifecycle
 
     public func startIfNeeded() {
+        // Extensions (notifications, share...) have tight memory limits: no plugins there.
+        if Bundle.main.bundlePath.hasSuffix(".appex") {
+            return
+        }
+        DispatchQueue.main.async {
+            WewZones.install()
+        }
         self.stateLock.lock()
         let shouldStart = !self.started
         self.started = true
@@ -484,11 +488,11 @@ public final class WewPluginManager {
             let data = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
             return String(data: data, encoding: .utf8) ?? "{}"
         }
-        let alert: @convention(block) (String) -> Void = { [weak self] text in
-            let name = plugin.manifest.name
-            DispatchQueue.main.async {
-                self?.alertHandler?(name, text)
-            }
+        let alert: @convention(block) (String) -> Void = { text in
+            WewPluginPresenter.shared.alert(title: plugin.manifest.name, text: text)
+        }
+        let toast: @convention(block) (String) -> Void = { text in
+            WewPluginPresenter.shared.toast(text)
         }
         let menuAdd: @convention(block) (String) -> Void = { [weak runtime] json in
             guard let runtime = runtime, let data = json.data(using: .utf8), let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
@@ -557,6 +561,7 @@ public final class WewPluginManager {
         context.setObject(profileSet, forKeyedSubscript: "__profileSet" as NSString)
         context.setObject(profileGet, forKeyedSubscript: "__profileGet" as NSString)
         context.setObject(alert, forKeyedSubscript: "__alert" as NSString)
+        context.setObject(toast, forKeyedSubscript: "__toast" as NSString)
         context.setObject(menuAdd, forKeyedSubscript: "__menuAdd" as NSString)
         context.setObject(httpGet, forKeyedSubscript: "__httpGet" as NSString)
 
@@ -589,6 +594,18 @@ public final class WewPluginManager {
             return nil
         }
         return result.isString ? result.toString() : nil
+    }
+
+    // Sends an event to every running plugin (for example "menu.open").
+    public func dispatchAll(event: String, args: [Any]) {
+        self.queue.async {
+            self.stateLock.lock()
+            let all = self.runtimes.values.sorted(by: { $0.info.manifest.id < $1.info.manifest.id })
+            self.stateLock.unlock()
+            for runtime in all {
+                self.callEmit(runtime, event: event, args: args)
+            }
+        }
     }
 
     // Used by plugin pages: a switch/input changed or a button was pressed.
@@ -674,6 +691,7 @@ public final class WewPluginManager {
       log: function () { var a = []; for (var i = 0; i < arguments.length; i++) { a.push(String(arguments[i])); } __log(a.join(' ')); },
       on: function (ev, fn) { if (typeof fn !== 'function') { return; } (__handlers[ev] = __handlers[ev] || []).push(fn); __registered(ev); },
       alert: function (text) { __alert(String(text)); },
+      toast: function (text) { __toast(String(text)); },
       storage: {
         get: function (k, d) { var v = __storageGet(String(k)); if (v === null || v === undefined) { return d === undefined ? null : d; } var p = __parse(v); return p === null ? d : p; },
         set: function (k, v) { __storageSet(String(k), __json(v)); },
