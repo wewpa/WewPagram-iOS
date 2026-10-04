@@ -1,0 +1,10 @@
+{
+  "id": "test.theme",
+  "name": "Тема: ночная сакура",
+  "version": "1.0.0",
+  "author": "WewPagram",
+  "description": "Меняет оформление меню WewPagram: фон-картинка из архива, цвета, размер текста.",
+  "icon": "icon.png",
+  "entry": "main.js",
+  "permissions": ["theme"]
+}

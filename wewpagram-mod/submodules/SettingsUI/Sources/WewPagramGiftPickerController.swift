@@ -48,7 +48,7 @@ public func wewpagramGiftPickerController(context: AccountContext, onPicked: @es
     var dismissImpl: (() -> Void)?
 
     let signal = combineLatest(queue: .mainQueue(),
-        context.sharedContext.presentationData,
+        wewThemedSignal(context: context),
         context.engine.payments.cachedStarGifts() |> map { $0 ?? [] }
     )
     |> map { presentationData, gifts -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -81,7 +81,7 @@ public func wewpagramGiftPickerController(context: AccountContext, onPicked: @es
         return (controllerState, (listState, ArgumentsPlaceholder()))
     }
 
-    let controller = ItemListController(context: context, state: signal)
+    let controller = wewMakeController(context: context, state: signal)
     dismissImpl = { [weak controller] in
         controller?.dismiss()
     }

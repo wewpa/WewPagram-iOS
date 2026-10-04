@@ -46,6 +46,7 @@ my-plugin.zip
 | `profile` | `wew.profile.set()` |
 | `deleted` | `wew.deleted.setEnabled()` |
 | `http` | `wew.http.get()` (только `https://`) |
+| `theme` | `wew.theme.*` — оформление меню WewPagram |
 
 ## API
 ```js
@@ -68,8 +69,30 @@ wew.profile.set({phone, ratingEnabled, ratingLevel, ratingPoints})   // [profile
 
 wew.http.get("https://...", function (status, body) { ... })          // [http]
 
+wew.theme.get()                                                       // текущее оформление меню
+wew.theme.set({ dark, accent, background, card, text, fontSize, sakura })   // [theme]
+wew.theme.reset()                                                     // вернуть стандартное
+
 wew.menu.add({ id, title, icon, page: [ ...элементы... ] })
 ```
+
+### Оформление меню (`wew.theme`)
+Меняет внешний вид **всех экранов WewPagram**. Любое поле можно не указывать (останется как есть) или
+передать `null` (сбросить). Применяется сразу и плавно.
+
+| Поле | Значение |
+|---|---|
+| `dark` | `true` — тёмное, `false` — светлое, `null` — как в приложении |
+| `accent` | цвет акцента, `"#RRGGBB"` |
+| `background` | цвет `"#RRGGBB"` **или имя картинки из архива** (`"bg.jpg"`, `"bg.png"`) |
+| `card` | цвет карточек со строками |
+| `text` | цвет основного текста |
+| `fontSize` | `small`, `regular`, `medium`, `large`, `xlarge` |
+| `sakura` | `true` / `false` — падающая сакура |
+
+Если задана картинка, она показывается под списком, а карточки становятся чуть прозрачными.
+Шрифт (гарнитуру) сменить нельзя: системные списки Telegram используют только системный шрифт, доступен размер.
+Пример — `examples/theme-demo` (архив `theme-plugin.zip`).
 
 ### Страница плагина
 `wew.menu.add` добавляет строку в меню WewPagram (раздел «Плагины») и страницу из элементов:

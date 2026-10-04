@@ -44,20 +44,20 @@ final class WewEntry: ItemListNodeEntry {
 
 struct WewNoArguments {}
 
-func wewListController(context: AccountContext, title: String, entries: Signal<[WewEntry], NoError>) -> ItemListController {
-    let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, entries)
+func wewListController(context: AccountContext, title: String, entries: Signal<[WewEntry], NoError>, rightButton: ((PresentationData) -> ItemListNavigationButton?)? = nil) -> ItemListController {
+    let signal = combineLatest(queue: .mainQueue(), wewThemedSignal(context: context), entries)
     |> map { presentationData, entries -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(
             presentationData: ItemListPresentationData(presentationData),
             title: .text(title),
             leftNavigationButton: nil,
-            rightNavigationButton: nil,
+            rightNavigationButton: rightButton?(presentationData),
             backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back)
         )
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks)
         return (controllerState, (listState, WewNoArguments()))
     }
-    return ItemListController(context: context, state: signal)
+    return wewMakeController(context: context, state: signal)
 }
 
 func wewHeader(_ order: Int, _ section: ItemListSectionId, _ text: String) -> WewEntry {

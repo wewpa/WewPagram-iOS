@@ -11,6 +11,7 @@ import AccountContext
 public func wewpagramHubController(context: AccountContext) -> ViewController {
     let manager = WewPluginManager.shared
     manager.startIfNeeded()
+    WewPagramSettings.shared.rememberSelfUser(context.account.peerId.id._internalGetInt64Value())
 
     var controllerRef: ViewController?
     let push: (ViewController) -> Void = { c in
@@ -19,8 +20,8 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
 
     let changes = Signal<Void, NoError>.single(Void()) |> then(wewDefaultsChanged())
 
-    let entries = combineLatest(queue: .mainQueue(), manager.revision.get(), changes)
-    |> map { _, _ -> [WewEntry] in
+    let entries = combineLatest(queue: .mainQueue(), manager.revision.get(), changes, WewPagramSettings.shared.themeRevision.get())
+    |> map { _, _, _ -> [WewEntry] in
         let settings = WewPagramSettings.shared
 
         let ghostCount = settings.ghostEnabledCount
@@ -45,6 +46,8 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
             wewRow(10, 1, icon: wewGhostIcon(), title: "Режим призрака", label: ghostLabel, action: { push(wewpagramGhostModeController(context: context)) }),
             wewRow(11, 1, icon: PresentationResourcesSettings.deleteChats, title: "Удалённые сообщения", label: deletedLabel, action: { push(wewpagramDeletedMessagesController(context: context)) }),
             wewRow(20, 2, icon: PresentationResourcesSettings.myProfile, title: "Профиль", label: "", action: { push(wewpagramFakeIdentityController(context: context)) }),
+            wewRow(21, 2, icon: PresentationResourcesSettings.premium, title: "Premium", label: settings.localPremiumEnabled ? "Вкл" : "Выкл", action: { push(wewpagramPremiumController(context: context)) }),
+            wewRow(22, 2, icon: PresentationResourcesSettings.appearance, title: "Внешний вид", label: "", action: { push(wewpagramAppearanceController(context: context)) }),
             wewRow(30, 3, icon: PresentationResourcesSettings.bot, title: "Юзербот", label: userbotLabel, action: { push(wewpagramUserbotController(context: context)) }),
             wewRow(40, 4, icon: PresentationResourcesSettings.appearance, title: "Плагины", label: plugins.isEmpty ? "" : "\(plugins.count)", action: { push(wewpagramPluginsController(context: context)) })
         ]
@@ -59,7 +62,27 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
         return result
     }
 
-    let controller = wewListController(context: context, title: "WewPagram", entries: entries)
+    // Moon / sun at the top: light <-> dark menu with a soft cross-fade.
+    let toggleTheme: () -> Void = {
+        let data = context.sharedContext.currentPresentationData.with { $0 }
+        let isDark = wewMenuIsDark(data)
+        if let view = controllerRef?.view, let snapshot = view.snapshotView(afterScreenUpdates: false) {
+            view.addSubview(snapshot)
+            UIView.animate(withDuration: 0.5, delay: 0.05, options: [.curveEaseInOut], animations: {
+                snapshot.alpha = 0.0
+            }, completion: { _ in
+                snapshot.removeFromSuperview()
+            })
+        }
+        var menu = WewPagramSettings.shared.menuTheme
+        menu.dark = !isDark
+        WewPagramSettings.shared.menuTheme = menu
+    }
+
+    let controller = wewListController(context: context, title: "WewPagram", entries: entries, rightButton: { data in
+        let isDark = data.theme.overallDarkAppearance
+        return ItemListNavigationButton(content: .text(isDark ? "☀️" : "🌙"), style: .regular, enabled: true, action: toggleTheme)
+    })
     controllerRef = controller
 
     // Plugins are told that the WewPagram menu was opened.

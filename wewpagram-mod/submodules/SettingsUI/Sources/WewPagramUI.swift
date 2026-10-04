@@ -227,6 +227,16 @@ final class WewPagramHeaderItemNode: ListViewItemNode {
 
                 let iconSide: CGFloat = 84.0
                 self.iconNode.image = item.icon
+                if self.iconNode.layer.animation(forKey: "wew.float") == nil {
+                    let float = CABasicAnimation(keyPath: "transform.translation.y")
+                    float.fromValue = -2.5
+                    float.toValue = 2.5
+                    float.duration = 3.0
+                    float.autoreverses = true
+                    float.repeatCount = .infinity
+                    float.timingFunction = CAMediaTimingFunction(name: .easeInEaseInOut)
+                    self.iconNode.layer.add(float, forKey: "wew.float")
+                }
                 self.iconNode.frame = CGRect(origin: CGPoint(x: floor((params.width - iconSide) / 2.0), y: 24.0), size: CGSize(width: iconSide, height: iconSide))
 
                 let text = NSMutableAttributedString(string: item.name, attributes: [

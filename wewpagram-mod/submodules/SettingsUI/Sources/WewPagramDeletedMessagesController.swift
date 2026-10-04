@@ -124,7 +124,7 @@ public func wewpagramDeletedMessagesController(context: AccountContext) -> ViewC
     )
 
     let signal = combineLatest(queue: .mainQueue(),
-        context.sharedContext.presentationData,
+        wewThemedSignal(context: context),
         statePromise.get()
     )
     |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -148,5 +148,5 @@ public func wewpagramDeletedMessagesController(context: AccountContext) -> ViewC
         return (controllerState, (listState, arguments))
     }
 
-    return ItemListController(context: context, state: signal)
+    return wewMakeController(context: context, state: signal)
 }

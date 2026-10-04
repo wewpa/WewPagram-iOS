@@ -36,6 +36,17 @@ enum InfoSection: Int, CaseIterable {
     case botAffiliateProgram
 }
 
+// WewPagram: "ID" row for profiles. Tap copies the number.
+private func wewIdItem(id: Int, value: String, interaction: PeerInfoInteraction) -> PeerInfoScreenLabeledValueItem {
+    return PeerInfoScreenLabeledValueItem(id: id, label: "ID", text: value, textColor: .primary, action: { _, _ in
+        UIPasteboard.general.string = value
+        WewPluginPresenter.shared.toast("ID скопирован: " + value)
+    }, longTapAction: nil, contextAction: nil, requestLayout: { animated in
+        interaction.requestLayout(animated)
+    })
+}
+
+
 func infoItems(
     data: PeerInfoScreenData?,
     context: AccountContext,
@@ -207,6 +218,10 @@ func infoItems(
                     }
                 )
             )
+        }
+        
+        if WewPagramSettings.shared.showProfileId {
+            items[currentPeerInfoSection]!.append(wewIdItem(id: 3100, value: String(user.id.id._internalGetInt64Value()), interaction: interaction))
         }
         
         if let cachedData = data.cachedData as? CachedUserData {
@@ -656,6 +671,9 @@ func infoItems(
                         }
                     )
                 )
+            }
+            if WewPagramSettings.shared.showProfileId {
+                items[currentPeerInfoSection]!.append(wewIdItem(id: 3100, value: "-100" + String(channel.id.id._internalGetInt64Value()), interaction: interaction))
             }
             if let cachedData = data.cachedData as? CachedChannelData {
                 let aboutText: String?

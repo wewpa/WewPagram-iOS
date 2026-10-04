@@ -124,7 +124,7 @@ public final class WewPluginManager {
     private let disabledKey = "WewPagram.plugins.disabled"
 
     private static let allowedExtensions: Set<String> = ["js", "json", "png", "jpg", "jpeg", "txt", "md"]
-    private static let knownPermissions: Set<String> = ["profile", "ghost", "deleted", "http", "send"]
+    private static let knownPermissions: Set<String> = ["profile", "ghost", "deleted", "http", "send", "theme"]
 
     private init() {}
 
@@ -526,6 +526,67 @@ public final class WewPluginManager {
             runtime.menuItems.removeAll(where: { $0.itemId == itemId })
             runtime.menuItems.append(WewPluginMenuItem(pluginId: pluginId, itemId: itemId, title: title, iconPath: iconPath, controls: controls))
         }
+        let themeGet: @convention(block) () -> String = {
+            let theme = WewPagramSettings.shared.menuTheme
+            var object: [String: Any] = ["sakura": theme.sakuraOn]
+            if let value = theme.dark { object["dark"] = value }
+            if let value = theme.accent { object["accent"] = value }
+            if let value = theme.background { object["background"] = value }
+            if let value = theme.card { object["card"] = value }
+            if let value = theme.text { object["text"] = value }
+            if let value = theme.fontSize { object["fontSize"] = value }
+            let data = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+            return String(data: data, encoding: .utf8) ?? "{}"
+        }
+        let themeSet: @convention(block) (String) -> Void = { json in
+            guard allow("theme"), let data = json.data(using: .utf8), let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+                return
+            }
+            // .some(nil) means "explicit null": reset that value.
+            func string(_ key: String) -> String?? {
+                guard let raw = object[key] else { return nil }
+                if raw is NSNull { return .some(nil) }
+                return .some(raw as? String)
+            }
+            var theme = WewPagramSettings.shared.menuTheme
+            if let raw = object["dark"] {
+                theme.dark = raw as? Bool
+            }
+            if let value = string("accent") { theme.accent = value }
+            if let value = string("card") { theme.card = value }
+            if let value = string("text") { theme.text = value }
+            if let value = string("fontSize") {
+                if let name = value, ["small", "regular", "medium", "large", "xlarge"].contains(name) {
+                    theme.fontSize = name
+                } else if value == nil {
+                    theme.fontSize = nil
+                }
+            }
+            if let raw = object["sakura"] {
+                theme.sakura = raw as? Bool
+            }
+            if let value = string("background") {
+                if let name = value, !name.isEmpty {
+                    if name.hasPrefix("#") {
+                        theme.background = name
+                        theme.backgroundImage = nil
+                    } else if plugin.filePath(name) != nil {
+                        // a picture from this plugin's archive (png / jpg)
+                        theme.backgroundImage = pluginId + "|" + name
+                        theme.background = nil
+                    }
+                } else {
+                    theme.background = nil
+                    theme.backgroundImage = nil
+                }
+            }
+            WewPagramSettings.shared.menuTheme = theme
+        }
+        let themeReset: @convention(block) () -> Void = {
+            if allow("theme") {
+                WewPagramSettings.shared.menuTheme = WewPagramSettings.WewMenuTheme()
+            }
+        }
         let httpGet: @convention(block) (String, Int) -> Void = { [weak self, weak runtime] urlString, callbackId in
             guard allow("http"), let url = URL(string: urlString), url.scheme == "https" else {
                 self?.queue.async {
@@ -564,6 +625,9 @@ public final class WewPluginManager {
         context.setObject(toast, forKeyedSubscript: "__toast" as NSString)
         context.setObject(menuAdd, forKeyedSubscript: "__menuAdd" as NSString)
         context.setObject(httpGet, forKeyedSubscript: "__httpGet" as NSString)
+        context.setObject(themeGet, forKeyedSubscript: "__themeGet" as NSString)
+        context.setObject(themeSet, forKeyedSubscript: "__themeSet" as NSString)
+        context.setObject(themeReset, forKeyedSubscript: "__themeReset" as NSString)
 
         context.evaluateScript("var __plugin = {id: \(WewPluginManager.jsString(pluginId)), name: \(WewPluginManager.jsString(plugin.manifest.name)), version: \(WewPluginManager.jsString(plugin.manifest.version))};")
         context.evaluateScript(WewPluginManager.prelude)
@@ -705,6 +769,11 @@ public final class WewPluginManager {
       deleted: { setEnabled: function (v) { __deletedSet(!!v); } },
       profile: { get: function () { return __parse(__profileGet()) || {}; }, set: function (o) { __profileSet(__json(o)); } },
       menu: { add: function (item) { __menuAdd(__json(item)); } },
+      theme: {
+        get: function () { return __parse(__themeGet()) || {}; },
+        set: function (o) { __themeSet(__json(o)); },
+        reset: function () { __themeReset(); }
+      },
       http: { get: function (url, cb) { var id = ++__httpSeq; __httpCallbacks[id] = cb; __httpGet(String(url), id); } }
     };
     """

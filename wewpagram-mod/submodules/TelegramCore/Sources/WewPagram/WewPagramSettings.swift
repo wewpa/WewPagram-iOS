@@ -14,6 +14,7 @@ public final class WewPagramSettings {
     public static let shared: WewPagramSettings = {
         let instance = WewPagramSettings()
         instance.migrateBalanceIfNeeded()
+        instance.refreshPremiumCache()
         // Plugins are started a moment later: they read these settings themselves.
         DispatchQueue.main.async {
             WewPluginManager.shared.startIfNeeded()
@@ -49,6 +50,10 @@ public final class WewPagramSettings {
         static let userbotAppKey     = "WewPagram.userbotAppKey"
         static let userbotEnabled    = "WewPagram.userbotEnabled"
         static let fakeBalanceEnabled = "WewPagram.fakeBalanceEnabled"
+        static let hideProfileId      = "WewPagram.hideProfileId"
+        static let menuTheme          = "WewPagram.menuTheme"
+        static let localPremium       = "WewPagram.localPremium"
+        static let selfUserId         = "WewPagram.selfUserId"
         static let fakeBalanceStars   = "WewPagram.fakeBalanceStars"
         
         // Deleted messages archive settings
@@ -228,6 +233,77 @@ public final class WewPagramSettings {
     public var injectedFakeStars: Int {
         get { self.defaults.object(forKey: Keys.injectedFakeStars) as? Int ?? 0 }
         set { self.defaults.set(newValue, forKey: Keys.injectedFakeStars) }
+    }
+
+    // MARK: - Menu theme (appearance of the WewPagram menus; plugins can change it too)
+    public struct WewMenuTheme: Codable, Equatable {
+        public var dark: Bool?               // nil = follow the app theme
+        public var accent: String?           // "#RRGGBB"
+        public var background: String?       // "#RRGGBB"
+        public var backgroundImage: String?  // "<pluginId>|<file>" (png / jpg shipped by a plugin)
+        public var card: String?             // "#RRGGBB" - row background
+        public var text: String?             // "#RRGGBB" - main text
+        public var fontSize: String?         // small | regular | medium | large | xlarge
+        public var sakura: Bool?             // nil = on
+
+        public init() {}
+
+        public var sakuraOn: Bool {
+            return self.sakura ?? true
+        }
+    }
+
+    public let themeRevision = ValuePromise<Int>(0, ignoreRepeated: false)
+    private var themeRevisionCounter = 0
+
+    public var menuTheme: WewMenuTheme {
+        get {
+            if let data = self.defaults.data(forKey: Keys.menuTheme), let value = try? JSONDecoder().decode(WewMenuTheme.self, from: data) {
+                return value
+            }
+            return WewMenuTheme()
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                self.defaults.set(data, forKey: Keys.menuTheme)
+            }
+            self.themeRevisionCounter += 1
+            self.themeRevision.set(self.themeRevisionCounter)
+        }
+    }
+
+    // MARK: - Local Premium (UI only: the server still treats the account as it is)
+    // Read from many places, so the answer is cached in a plain static.
+    public static var localPremiumUserId: Int64 = 0
+
+    public var selfUserId: Int64 {
+        get { return Int64(self.defaults.integer(forKey: Keys.selfUserId)) }
+        set { self.defaults.set(Int(newValue), forKey: Keys.selfUserId) }
+    }
+
+    public var localPremiumEnabled: Bool {
+        get { return self.defaults.bool(forKey: Keys.localPremium) }
+        set {
+            self.defaults.set(newValue, forKey: Keys.localPremium)
+            self.refreshPremiumCache()
+        }
+    }
+
+    fileprivate func refreshPremiumCache() {
+        WewPagramSettings.localPremiumUserId = self.localPremiumEnabled ? self.selfUserId : 0
+    }
+
+    public func rememberSelfUser(_ id: Int64) {
+        if self.selfUserId != id {
+            self.selfUserId = id
+            self.refreshPremiumCache()
+        }
+    }
+
+    // MARK: - Profile ID row (on by default)
+    public var showProfileId: Bool {
+        get { return !self.defaults.bool(forKey: Keys.hideProfileId) }
+        set { self.defaults.set(!newValue, forKey: Keys.hideProfileId) }
     }
 
     // MARK: - Fake balance (Stars). Independent from the profile rating.
