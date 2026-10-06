@@ -34,8 +34,22 @@ private func wewTopViewController() -> UIViewController? {
 }
 
 enum WewZoneNames {
+    // Screens that only wrap other screens (or belong to UIKit itself): no zone events, no overlays.
+    static func isContainer(_ className: String) -> Bool {
+        for prefix in ["UI", "_", "NS", "SF", "AV", "PU", "QL", "MF", "WK", "SK"] where className.hasPrefix(prefix) {
+            return true
+        }
+        return className.contains("NavigationController") || className.contains("TabBarController") || className.contains("RootController") || className.contains("Container")
+    }
+
     // Maps a view controller class name to a stable zone id.
     static func zone(for className: String) -> String? {
+        if className.hasPrefix("AuthorizationSequence") { return "login" }
+        if className.contains("GiftStoreScreen") || className.contains("GiftAuction") { return "market" }
+        if className.hasPrefix("Gift") || className.hasPrefix("PremiumGift") { return "gifts" }
+        if className.hasPrefix("Stars") { return "stars" }
+        if className.hasPrefix("Premium") { return "premium" }
+        if className.contains("StoryContainerScreen") { return "stories" }
         if className.contains("ChatListController") { return "chats" }
         if className.contains("ChatController") { return "chat" }
         if className.contains("PeerInfoScreen") { return "profile" }
@@ -43,6 +57,209 @@ enum WewZoneNames {
         if className.contains("CallListController") { return "calls" }
         if className.contains("ItemListController") || className.contains("SettingsController") { return "settings" }
         return nil
+    }
+}
+
+public struct WewOverlay {
+    public var pluginId: String
+    public var id: String
+    public var zone: String      // a zone id, or "*" for every screen
+    public var kind: String      // banner | button
+    public var text: String
+    public var color: String?
+    public var textColor: String?
+    public var bottom: Bool
+    public var key: String
+}
+
+private func wewColor(_ hex: String?, fallback: UIColor) -> UIColor {
+    guard var value = hex?.trimmingCharacters(in: .whitespaces), !value.isEmpty else { return fallback }
+    if value.hasPrefix("#") { value.removeFirst() }
+    guard value.count == 6, let number = UInt32(value, radix: 16) else { return fallback }
+    return UIColor(red: CGFloat((number >> 16) & 0xff) / 255.0, green: CGFloat((number >> 8) & 0xff) / 255.0, blue: CGFloat(number & 0xff) / 255.0, alpha: 1.0)
+}
+
+private final class WewPassthroughView: UIView {
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let view = super.hitTest(point, with: event)
+        return view === self ? nil : view
+    }
+}
+
+private final class WewButtonTarget: NSObject {
+    let action: () -> Void
+
+    init(action: @escaping () -> Void) {
+        self.action = action
+    }
+
+    @objc func fire() {
+        self.action()
+    }
+}
+
+private var wewButtonTargetKey: UInt8 = 0
+
+// Small native elements plugins can pin to any screen (login, gifts, market, stars,
+// chats, profile, ...) without rebuilding the app. Only a fixed set of kinds exists,
+// so a plugin can decorate a screen but cannot reach into Telegram's own views.
+public final class WewOverlays {
+    public static let shared = WewOverlays()
+
+    private static let containerTag = 0x57455701
+
+    private let lock = NSLock()
+    private var items: [WewOverlay] = []
+    private var tints: [String: String] = [:]
+
+    private init() {}
+
+    func add(_ overlay: WewOverlay) {
+        self.lock.lock()
+        self.items.removeAll(where: { $0.pluginId == overlay.pluginId && $0.id == overlay.id })
+        if self.items.filter({ $0.pluginId == overlay.pluginId }).count < 8 {
+            self.items.append(overlay)
+        }
+        self.lock.unlock()
+        DispatchQueue.main.async {
+            WewZones.refreshCurrent()
+        }
+    }
+
+    func remove(pluginId: String, id: String) {
+        self.lock.lock()
+        self.items.removeAll(where: { $0.pluginId == pluginId && $0.id == id })
+        self.lock.unlock()
+        DispatchQueue.main.async {
+            WewZones.refreshCurrent()
+        }
+    }
+
+    func clearAll() {
+        self.lock.lock()
+        self.items = []
+        self.tints = [:]
+        self.lock.unlock()
+        DispatchQueue.main.async {
+            WewOverlays.shared.applyTint()
+            WewZones.refreshCurrent()
+        }
+    }
+
+    func setTint(_ hex: String?, pluginId: String) {
+        self.lock.lock()
+        self.tints[pluginId] = hex
+        self.lock.unlock()
+        DispatchQueue.main.async {
+            WewOverlays.shared.applyTint()
+        }
+    }
+
+    private func applyTint() {
+        self.lock.lock()
+        let hex = self.tints.sorted(by: { $0.key < $1.key }).compactMap({ $0.value }).last
+        self.lock.unlock()
+        guard let window = wewKeyWindow() else { return }
+        window.tintColor = hex.flatMap { wewColor($0, fallback: .clear) }
+    }
+
+    func haptic() {
+        DispatchQueue.main.async {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+        }
+    }
+
+    func copy(_ text: String) {
+        DispatchQueue.main.async {
+            UIPasteboard.general.string = text
+        }
+    }
+
+    func open(_ url: URL) {
+        DispatchQueue.main.async {
+            guard let app = wewSharedApplication() else { return }
+            let selector = NSSelectorFromString("openURL:options:completionHandler:")
+            guard app.responds(to: selector) else { return }
+            typealias OpenFunction = @convention(c) (AnyObject, Selector, URL, [AnyHashable: Any], ((Bool) -> Void)?) -> Void
+            let function = unsafeBitCast(app.method(for: selector), to: OpenFunction.self)
+            function(app, selector, url, [:], nil)
+        }
+    }
+
+    // Main thread.
+    func apply(to controller: UIViewController, zone: String) {
+        guard controller.isViewLoaded else { return }
+        let view = controller.view!
+        view.viewWithTag(WewOverlays.containerTag)?.removeFromSuperview()
+
+        self.lock.lock()
+        let matching = self.items.filter { $0.zone == zone || $0.zone == "*" }
+        self.lock.unlock()
+        guard !matching.isEmpty else { return }
+
+        let container = WewPassthroughView(frame: view.bounds)
+        container.tag = WewOverlays.containerTag
+        container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.backgroundColor = .clear
+
+        var topY = view.safeAreaInsets.top + 6.0
+        var bottomY = view.bounds.height - view.safeAreaInsets.bottom - 84.0
+        let maxWidth = view.bounds.width - 32.0
+
+        for item in matching {
+            let background = wewColor(item.color, fallback: item.kind == "button" ? UIColor(red: 0.56, green: 0.48, blue: 1.0, alpha: 1.0) : UIColor(white: 0.1, alpha: 0.9))
+            let foreground = wewColor(item.textColor, fallback: .white)
+            let label = UILabel()
+            label.text = item.text
+            label.font = UIFont.systemFont(ofSize: item.kind == "button" ? 15.0 : 13.0, weight: .semibold)
+            label.textColor = foreground
+            label.textAlignment = .center
+            label.numberOfLines = 2
+            let fit = label.sizeThatFits(CGSize(width: maxWidth - 28.0, height: CGFloat.greatestFiniteMagnitude))
+            let width = min(maxWidth, ceil(fit.width) + 28.0)
+            let height = max(item.kind == "button" ? 38.0 : 28.0, ceil(fit.height) + 14.0)
+            let y: CGFloat
+            if item.bottom {
+                bottomY -= height
+                y = bottomY
+                bottomY -= 8.0
+            } else {
+                y = topY
+                topY += height + 6.0
+            }
+            let frame = CGRect(x: floor((view.bounds.width - width) / 2.0), y: y, width: width, height: height)
+
+            if item.kind == "button" {
+                let button = UIButton(type: .custom)
+                button.frame = frame
+                button.backgroundColor = background
+                button.layer.cornerRadius = height / 2.0
+                button.autoresizingMask = [.flexibleLeftMargin, .flexibleRightMargin]
+                label.frame = button.bounds
+                label.isUserInteractionEnabled = false
+                button.addSubview(label)
+                let pluginId = item.pluginId
+                let key = item.key
+                let target = WewButtonTarget(action: {
+                    WewPluginManager.shared.dispatch(pluginId: pluginId, event: "button", args: [key])
+                })
+                objc_setAssociatedObject(button, &wewButtonTargetKey, target, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                button.addTarget(target, action: #selector(WewButtonTarget.fire), for: .touchUpInside)
+                container.addSubview(button)
+            } else {
+                let box = UIView(frame: frame)
+                box.backgroundColor = background
+                box.layer.cornerRadius = 10.0
+                box.isUserInteractionEnabled = false
+                box.autoresizingMask = [.flexibleLeftMargin, .flexibleRightMargin]
+                label.frame = box.bounds
+                box.addSubview(label)
+                container.addSubview(box)
+            }
+        }
+        view.addSubview(container)
+        view.bringSubviewToFront(container)
     }
 }
 
@@ -209,12 +426,38 @@ public final class WewZones {
         }
     }
 
+    private static weak var lastController: UIViewController?
+    private static var lastControllerZone: String = "other"
+    private static var lastOtherClass: String?
+
+    // Re-applies overlays on the screen that is currently on top (a plugin just added one).
+    static func refreshCurrent() {
+        guard let controller = lastController else { return }
+        WewOverlays.shared.apply(to: controller, zone: lastControllerZone)
+    }
+
     fileprivate static func noteAppeared(_ controller: UIViewController) {
         let className = String(describing: type(of: controller))
-        guard let zone = WewZoneNames.zone(for: className) else {
+        if WewZoneNames.isContainer(className) {
             return
         }
+        let known = WewZoneNames.zone(for: className)
+        let zone = known ?? "other"
+        lastController = controller
+        lastControllerZone = zone
+        WewOverlays.shared.apply(to: controller, zone: zone)
+
         let now = Date().timeIntervalSince1970
+        if known == nil {
+            // Any other screen is reported as zone "other"; the class name tells which.
+            if className == lastOtherClass && now - lastTime < 1.5 {
+                return
+            }
+            lastOtherClass = className
+            lastTime = now
+            WewPluginManager.shared.dispatchAll(event: "zone.open", args: ["other", className])
+            return
+        }
         if zone == lastZone && now - lastTime < 1.5 {
             return
         }

@@ -146,7 +146,7 @@ private func wewNftController(context: AccountContext) -> ViewController {
     let entries = state.get() |> map { s -> [WewEntry] in
         var result: [WewEntry] = [wewHeader(0, 0, "ВАШИ NFT-ЮЗЕРНЕЙМЫ")]
         for (index, entry) in s.entries.enumerated() {
-            result.append(wewRow(10 + index, 0, icon: PresentationResourcesSettings.ton, title: "@" + entry.username, label: entry.price, action: {
+            result.append(wewRow(10 + index, 0, icon: wewGlyph(.cube), title: "@" + entry.username, label: entry.price, action: {
                 wewConfirm(context: context, controller: controllerRef, text: "Удалить @\(entry.username)?", confirmTitle: "Удалить", handler: {
                     settings.removeFakeNftEntry(at: index)
                     settings.notifyProfileChanged()
@@ -195,7 +195,7 @@ private func wewRatingController(context: AccountContext) -> ViewController {
 
     let entries = state.get() |> map { s -> [WewEntry] in
         var result: [WewEntry] = [
-            wewSwitch(0, 0, icon: PresentationResourcesSettings.stats, title: "Показывать рейтинг", value: s.enabled, update: { value in
+            wewSwitch(0, 0, icon: wewGlyph(.chart), title: "Показывать рейтинг", value: s.enabled, update: { value in
                 settings.fakeRatingEnabled = value
                 settings.notifyProfileChanged()
                 update { var n = $0; n.enabled = value; return n }
@@ -237,7 +237,7 @@ private func wewBalanceController(context: AccountContext) -> ViewController {
 
     let entries = state.get() |> map { s -> [WewEntry] in
         var result: [WewEntry] = [
-            wewSwitch(0, 0, icon: PresentationResourcesSettings.stars, title: "Свой баланс", value: s.enabled, update: { value in
+            wewSwitch(0, 0, icon: wewGlyph(.star), title: "Свой баланс", value: s.enabled, update: { value in
                 settings.fakeBalanceEnabled = value
                 wewApplyStarsDelta(context: context, settings: settings)
                 settings.notifyProfileChanged()
@@ -358,11 +358,11 @@ public func wewpagramFakeIdentityController(context: AccountContext) -> ViewCont
         let giftCount = settings.fakeGiftRecords.count
 
         return [
-            wewRow(0, 0, icon: PresentationResourcesSettings.changePhoneNumber, title: "Номер телефона", label: phone, action: { push(wewPhoneController(context: context)) }),
-            wewRow(1, 0, icon: PresentationResourcesSettings.ton, title: "NFT-юзернеймы", label: nftCount == 0 ? "" : "\(nftCount)", action: { push(wewNftController(context: context)) }),
-            wewRow(10, 1, icon: PresentationResourcesSettings.stats, title: "Рейтинг", label: ratingLabel, action: { push(wewRatingController(context: context)) }),
-            wewRow(11, 1, icon: PresentationResourcesSettings.stars, title: "Баланс", label: balanceLabel, action: { push(wewBalanceController(context: context)) }),
-            wewRow(20, 2, icon: PresentationResourcesSettings.premiumGift, title: "Подарки", label: giftCount == 0 ? "" : "\(giftCount)", action: { push(wewGiftsController(context: context)) })
+            wewRow(0, 0, icon: wewGlyph(.phone), title: "Номер телефона", label: phone, action: { push(wewPhoneController(context: context)) }),
+            wewRow(1, 0, icon: wewGlyph(.cube), title: "NFT-юзернеймы", label: nftCount == 0 ? "" : "\(nftCount)", action: { push(wewNftController(context: context)) }),
+            wewRow(10, 1, icon: wewGlyph(.chart), title: "Рейтинг", label: ratingLabel, action: { push(wewRatingController(context: context)) }),
+            wewRow(11, 1, icon: wewGlyph(.star), title: "Баланс", label: balanceLabel, action: { push(wewBalanceController(context: context)) }),
+            wewRow(20, 2, icon: wewGlyph(.gift), title: "Подарки", label: giftCount == 0 ? "" : "\(giftCount)", action: { push(wewGiftsController(context: context)) })
         ]
     }
 

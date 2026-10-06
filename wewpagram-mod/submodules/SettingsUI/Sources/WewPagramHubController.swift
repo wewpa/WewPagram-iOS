@@ -34,7 +34,6 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
             ghostLabel = "\(ghostCount)/\(WewPagramSettings.ghostTotalCount)"
         }
         let deletedLabel = settings.deletedMessagesEnabled ? "Вкл" : "Выкл"
-        let userbotLabel = settings.userbotEnabled ? "Вкл" : "Выкл"
 
         let plugins = manager.installedPlugins()
         let logoPath = manager.logoPath()
@@ -43,18 +42,18 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
             WewEntry(order: 0, section: 0, signature: "header|" + (logoPath ?? ""), build: { pd in
                 return WewPagramHeaderItem(presentationData: pd, icon: wewLogoImage(side: 84.0, overridePath: logoPath), name: "WewPagram", version: wewVersionString, sectionId: 0)
             }),
-            wewRow(10, 1, icon: wewGhostIcon(), title: "Режим призрака", label: ghostLabel, action: { push(wewpagramGhostModeController(context: context)) }),
-            wewRow(11, 1, icon: PresentationResourcesSettings.deleteChats, title: "Удалённые сообщения", label: deletedLabel, action: { push(wewpagramDeletedMessagesController(context: context)) }),
-            wewRow(20, 2, icon: PresentationResourcesSettings.myProfile, title: "Профиль", label: "", action: { push(wewpagramFakeIdentityController(context: context)) }),
-            wewRow(21, 2, icon: PresentationResourcesSettings.premium, title: "Premium", label: settings.localPremiumEnabled ? "Вкл" : "Выкл", action: { push(wewpagramPremiumController(context: context)) }),
-            wewRow(22, 2, icon: PresentationResourcesSettings.appearance, title: "Внешний вид", label: "", action: { push(wewpagramAppearanceController(context: context)) }),
-            wewRow(30, 3, icon: PresentationResourcesSettings.bot, title: "Юзербот", label: userbotLabel, action: { push(wewpagramUserbotController(context: context)) }),
-            wewRow(40, 4, icon: PresentationResourcesSettings.appearance, title: "Плагины", label: plugins.isEmpty ? "" : "\(plugins.count)", action: { push(wewpagramPluginsController(context: context)) })
+            wewRow(10, 1, icon: wewGlyph(.ghost), title: "Режим призрака", label: ghostLabel, action: { push(wewpagramGhostModeController(context: context)) }),
+            wewRow(11, 1, icon: wewGlyph(.trash), title: "Удалённые сообщения", label: deletedLabel, action: { push(wewpagramDeletedMessagesController(context: context)) }),
+            wewRow(20, 2, icon: wewGlyph(.person), title: "Профиль", label: "", action: { push(wewpagramFakeIdentityController(context: context)) }),
+            wewRow(21, 2, icon: wewGlyph(.star), title: "Premium", label: settings.localPremiumEnabled ? "Вкл" : "Выкл", action: { push(wewpagramPremiumController(context: context)) }),
+            wewRow(22, 2, icon: wewGlyph(.drop), title: "Внешний вид", label: "", action: { push(wewpagramAppearanceController(context: context)) }),
+            wewRow(23, 2, icon: wewGlyph(.globe), title: "Переводчик (Google)", label: settings.googleTranslateEnabled ? "Вкл" : "Выкл", action: { settings.googleTranslateEnabled = !settings.googleTranslateEnabled }),
+            wewRow(40, 4, icon: wewGlyph(.cube), title: "Плагины", label: plugins.isEmpty ? "" : "\(plugins.count)", action: { push(wewpagramPluginsController(context: context)) })
         ]
 
         // Pages that enabled plugins added through wew.menu.add
         for (index, item) in manager.menuItems().enumerated() {
-            let icon = item.iconPath.flatMap { wewPluginTile(path: $0) } ?? PresentationResourcesSettings.appearance
+            let icon = item.iconPath.flatMap { wewPluginTile(path: $0) } ?? wewGlyph(.cube)
             result.append(wewRow(100 + index, 4, icon: icon, title: item.title, label: "", action: {
                 push(wewpagramPluginPageController(context: context, pluginId: item.pluginId, itemId: item.itemId))
             }))

@@ -52,7 +52,7 @@ private func wewPluginIcon(_ plugin: WewPluginInfo) -> UIImage? {
     if let path = plugin.iconPath, let tile = wewPluginTile(path: path) {
         return tile
     }
-    return PresentationResourcesSettings.appearance
+    return wewGlyph(.cube)
 }
 
 // MARK: - Plugin list

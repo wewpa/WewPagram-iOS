@@ -47,8 +47,7 @@ public final class WewPagramSettings {
         static let injectedFakeStars = "WewPagram.injectedFakeStars"
         static let fakeGiftsData     = "WewPagram.fakeGiftsData"
         static let fakeGiftsV2       = "WewPagram.fakeGiftsV2"
-        static let userbotAppKey     = "WewPagram.userbotAppKey"
-        static let userbotEnabled    = "WewPagram.userbotEnabled"
+        static let googleTranslate   = "WewPagram.googleTranslate"
         static let fakeBalanceEnabled = "WewPagram.fakeBalanceEnabled"
         static let hideProfileId      = "WewPagram.hideProfileId"
         static let menuTheme          = "WewPagram.menuTheme"
@@ -460,24 +459,12 @@ public final class WewPagramSettings {
         self.fakeGiftRecords = []
     }
 
-    // MARK: - Userbot (own server)
-    // The app links itself to the userbot of the SAME Telegram account: it
-    // registers the account id with the server and receives a key bound to it.
-    // Nothing has to be typed in by the user.
-    public static let serverURL = "https://wewpa.ru"
-    // Shared secret that lets the app register with the server (must equal
-    // ENROLL_SECRET on the server). Rotate both together if it ever leaks.
-    public static let enrollSecret = "MAtCsDgInKaqGzv7VLXkkPaOFP-EDDYh"
-
-    public var userbotAppKey: String {
-        get { self.defaults.string(forKey: Keys.userbotAppKey) ?? "" }
-        set { self.defaults.set(newValue, forKey: Keys.userbotAppKey) }
-    }
-
-    // Last switch state seen from the server (used for menu labels).
-    public var userbotEnabled: Bool {
-        get { self.defaults.bool(forKey: Keys.userbotEnabled) }
-        set { self.defaults.set(newValue, forKey: Keys.userbotEnabled) }
+    // MARK: - Translation without Telegram Premium
+    // Incoming messages are translated through the public Google Translate
+    // endpoint, so the "Translate" bar in chats works for everyone.
+    public var googleTranslateEnabled: Bool {
+        get { return self.defaults.object(forKey: Keys.googleTranslate) == nil ? true : self.defaults.bool(forKey: Keys.googleTranslate) }
+        set { self.defaults.set(newValue, forKey: Keys.googleTranslate) }
     }
 
     // MARK: - Deleted messages archive (AyuGram-style: capture before real

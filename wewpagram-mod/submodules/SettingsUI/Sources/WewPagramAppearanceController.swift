@@ -86,7 +86,7 @@ public func wewpagramPremiumController(context: AccountContext) -> ViewControlle
 
     let entries = changes |> map { _ -> [WewEntry] in
         return [
-            wewSwitch(0, 0, icon: PresentationResourcesSettings.premium, title: "Premium", subtitle: "Только на этом устройстве", value: settings.localPremiumEnabled, update: { value in
+            wewSwitch(0, 0, icon: wewGlyph(.star), title: "Premium", subtitle: "Только на этом устройстве", value: settings.localPremiumEnabled, update: { value in
                 settings.rememberSelfUser(accountId)
                 settings.localPremiumEnabled = value
                 WewPluginPresenter.shared.toast("Перезапустите приложение, чтобы Premium применился везде")

@@ -316,6 +316,10 @@ public final class WewPluginManager {
     }
 
     public func storageSet(pluginId: String, key: String, value: String?) {
+        // Limits: a plugin cannot fill the device with junk.
+        if key.count > 128 || (value?.utf8.count ?? 0) > 256 * 1024 {
+            return
+        }
         if let value = value {
             self.defaults.set(value, forKey: self.storageKey(pluginId, key))
         } else {
@@ -362,6 +366,7 @@ public final class WewPluginManager {
 
     public func reload() {
         self.queue.async {
+            WewOverlays.shared.clearAll()
             var newRuntimes: [String: WewPluginRuntime] = [:]
             for plugin in self.installedPlugins() where plugin.enabled {
                 if let runtime = self.makeRuntime(for: plugin) {
@@ -587,8 +592,80 @@ public final class WewPluginManager {
                 WewPagramSettings.shared.menuTheme = WewPagramSettings.WewMenuTheme()
             }
         }
+        // Throttle for anything a plugin can put on screen.
+        let uiGate = WewRateGate(limit: 12, per: 10.0)
+        let uiAllowed: () -> Bool = {
+            return allow("ui") && uiGate.pass()
+        }
+        let uiBanner: @convention(block) (String) -> Void = { json in
+            guard uiAllowed(), let object = WewPluginManager.parseObject(json) else { return }
+            WewOverlays.shared.add(WewOverlay(
+                pluginId: pluginId,
+                id: (object["id"] as? String) ?? UUID().uuidString,
+                zone: (object["zone"] as? String) ?? "*",
+                kind: "banner",
+                text: String(((object["text"] as? String) ?? "").prefix(200)),
+                color: object["color"] as? String,
+                textColor: object["textColor"] as? String,
+                bottom: (object["position"] as? String) == "bottom",
+                key: ""
+            ))
+        }
+        let uiButton: @convention(block) (String) -> Void = { json in
+            guard uiAllowed(), let object = WewPluginManager.parseObject(json) else { return }
+            WewOverlays.shared.add(WewOverlay(
+                pluginId: pluginId,
+                id: (object["id"] as? String) ?? UUID().uuidString,
+                zone: (object["zone"] as? String) ?? "*",
+                kind: "button",
+                text: String(((object["text"] as? String) ?? (object["title"] as? String) ?? "").prefix(60)),
+                color: object["color"] as? String,
+                textColor: object["textColor"] as? String,
+                bottom: (object["position"] as? String) != "top",
+                key: (object["key"] as? String) ?? ""
+            ))
+        }
+        let uiRemove: @convention(block) (String) -> Void = { id in
+            if allow("ui") {
+                WewOverlays.shared.remove(pluginId: pluginId, id: id)
+            }
+        }
+        let uiTint: @convention(block) (String) -> Void = { hex in
+            if uiAllowed() {
+                WewOverlays.shared.setTint(hex.isEmpty ? nil : hex, pluginId: pluginId)
+            }
+        }
+        let appHaptic: @convention(block) () -> Void = {
+            if uiAllowed() {
+                WewOverlays.shared.haptic()
+            }
+        }
+        let appOpenURL: @convention(block) (String) -> Void = { urlString in
+            // Only web links, and only when the plugin may touch the UI.
+            guard uiAllowed(), let url = URL(string: urlString), url.scheme == "https" else { return }
+            WewOverlays.shared.open(url)
+        }
+        let appCopy: @convention(block) (String) -> Void = { text in
+            if allow("clipboard") && uiGate.pass() {
+                WewOverlays.shared.copy(String(text.prefix(10000)))
+            }
+        }
+        let appTranslate: @convention(block) (String, String, Int) -> Void = { [weak self, weak runtime] text, lang, callbackId in
+            guard allow("http"), uiGate.pass() else {
+                self?.queue.async {
+                    runtime?.context.objectForKeyedSubscript("__httpResult")?.call(withArguments: [callbackId, 0, ""])
+                }
+                return
+            }
+            let _ = (WewGoogleTranslationService.shared.translate(texts: [AnyHashable(0): String(text.prefix(4000))], fromLang: "auto", toLang: lang)).startStandalone(next: { result in
+                let value = result?[AnyHashable(0)] ?? ""
+                self?.queue.async {
+                    runtime?.context.objectForKeyedSubscript("__httpResult")?.call(withArguments: [callbackId, value.isEmpty ? 0 : 200, value])
+                }
+            })
+        }
         let httpGet: @convention(block) (String, Int) -> Void = { [weak self, weak runtime] urlString, callbackId in
-            guard allow("http"), let url = URL(string: urlString), url.scheme == "https" else {
+            guard allow("http"), uiGate.pass(), let url = URL(string: urlString), url.scheme == "https", WewPluginManager.isPublicHost(url.host) else {
                 self?.queue.async {
                     if let runtime = runtime {
                         runtime.context.objectForKeyedSubscript("__httpResult")?.call(withArguments: [callbackId, 0, "https only"])
@@ -628,6 +705,14 @@ public final class WewPluginManager {
         context.setObject(themeGet, forKeyedSubscript: "__themeGet" as NSString)
         context.setObject(themeSet, forKeyedSubscript: "__themeSet" as NSString)
         context.setObject(themeReset, forKeyedSubscript: "__themeReset" as NSString)
+        context.setObject(uiBanner, forKeyedSubscript: "__uiBanner" as NSString)
+        context.setObject(uiButton, forKeyedSubscript: "__uiButton" as NSString)
+        context.setObject(uiRemove, forKeyedSubscript: "__uiRemove" as NSString)
+        context.setObject(uiTint, forKeyedSubscript: "__uiTint" as NSString)
+        context.setObject(appHaptic, forKeyedSubscript: "__appHaptic" as NSString)
+        context.setObject(appOpenURL, forKeyedSubscript: "__appOpenURL" as NSString)
+        context.setObject(appCopy, forKeyedSubscript: "__appCopy" as NSString)
+        context.setObject(appTranslate, forKeyedSubscript: "__appTranslate" as NSString)
 
         context.evaluateScript("var __plugin = {id: \(WewPluginManager.jsString(pluginId)), name: \(WewPluginManager.jsString(plugin.manifest.name)), version: \(WewPluginManager.jsString(plugin.manifest.version))};")
         context.evaluateScript(WewPluginManager.prelude)
@@ -639,6 +724,27 @@ public final class WewPluginManager {
             self.appendLog(runtime, "Не найден файл \(entry)")
         }
         return runtime
+    }
+
+    static func parseObject(_ json: String) -> [String: Any]? {
+        guard let data = json.data(using: .utf8) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    }
+
+    // Plugins may only reach public internet hosts: no localhost, no LAN, no raw private IPs.
+    static func isPublicHost(_ host: String?) -> Bool {
+        guard let host = host?.lowercased(), !host.isEmpty else { return false }
+        if host == "localhost" || host.hasSuffix(".local") || host.hasSuffix(".internal") || host.contains(":") {
+            return false
+        }
+        let parts = host.split(separator: ".").compactMap { Int($0) }
+        if parts.count == 4 {
+            if parts[0] == 10 || parts[0] == 127 || parts[0] == 0 { return false }
+            if parts[0] == 169 && parts[1] == 254 { return false }
+            if parts[0] == 192 && parts[1] == 168 { return false }
+            if parts[0] == 172 && parts[1] >= 16 && parts[1] <= 31 { return false }
+        }
+        return true
     }
 
     private static func jsString(_ value: String) -> String {
@@ -774,7 +880,44 @@ public final class WewPluginManager {
         set: function (o) { __themeSet(__json(o)); },
         reset: function () { __themeReset(); }
       },
+      ui: {
+        banner: function (o) { __uiBanner(__json(o || {})); },
+        button: function (o) { __uiButton(__json(o || {})); },
+        remove: function (id) { __uiRemove(String(id)); },
+        tint: function (hex) { __uiTint(hex ? String(hex) : ''); }
+      },
+      app: {
+        haptic: function () { __appHaptic(); },
+        openURL: function (u) { __appOpenURL(String(u)); },
+        copy: function (t) { __appCopy(String(t)); }
+      },
+      translate: function (text, lang, cb) { var id = ++__httpSeq; __httpCallbacks[id] = function (st, body) { if (cb) { cb(st === 200 ? body : null); } }; __appTranslate(String(text), String(lang || 'en'), id); },
       http: { get: function (url, cb) { var id = ++__httpSeq; __httpCallbacks[id] = cb; __httpGet(String(url), id); } }
     };
     """
+}
+
+// Simple sliding-window limiter: a runaway plugin cannot spam the screen or the network.
+final class WewRateGate {
+    private let limit: Int
+    private let window: TimeInterval
+    private var stamps: [TimeInterval] = []
+    private let lock = NSLock()
+
+    init(limit: Int, per window: TimeInterval) {
+        self.limit = limit
+        self.window = window
+    }
+
+    func pass() -> Bool {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        let now = Date().timeIntervalSince1970
+        self.stamps = self.stamps.filter { now - $0 < self.window }
+        if self.stamps.count >= self.limit {
+            return false
+        }
+        self.stamps.append(now)
+        return true
+    }
 }

@@ -234,7 +234,7 @@ final class WewPagramHeaderItemNode: ListViewItemNode {
                     float.duration = 3.0
                     float.autoreverses = true
                     float.repeatCount = .infinity
-                    float.timingFunction = CAMediaTimingFunction(name: .easeInEaseInOut)
+                    float.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                     self.iconNode.layer.add(float, forKey: "wew.float")
                 }
                 self.iconNode.frame = CGRect(origin: CGPoint(x: floor((params.width - iconSide) / 2.0), y: 24.0), size: CGSize(width: iconSide, height: iconSide))
