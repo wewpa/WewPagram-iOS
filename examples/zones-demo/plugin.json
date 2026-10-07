@@ -1,1 +1,1 @@
-{"id":"zones-demo","name":"Зоны","version":"1.0.0","author":"WewPagram","description":"Плашки на экране входа, в подарках, маркете и звёздах","permissions":["ui","http"]}
+{"id":"zones-demo","name":"Зоны","version":"1.0.0","author":"WewPagram","description":"Плашки на экране входа, в подарках, маркете и звёздах","entry":"main.js","permissions":["ui","http"]}

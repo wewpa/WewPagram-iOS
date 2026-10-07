@@ -48,6 +48,7 @@ public final class WewPagramSettings {
         static let fakeGiftsData     = "WewPagram.fakeGiftsData"
         static let fakeGiftsV2       = "WewPagram.fakeGiftsV2"
         static let googleTranslate   = "WewPagram.googleTranslate"
+        static let fakeGifts         = "WewPagram.fakeGifts"
         static let fakeBalanceEnabled = "WewPagram.fakeBalanceEnabled"
         static let hideProfileId      = "WewPagram.hideProfileId"
         static let menuTheme          = "WewPagram.menuTheme"
@@ -457,6 +458,12 @@ public final class WewPagramSettings {
 
     public func removeAllFakeGifts() {
         self.fakeGiftRecords = []
+    }
+
+    // MARK: - Visual gifts (nothing is sent, no stars are spent)
+    public var fakeGiftsEnabled: Bool {
+        get { return self.defaults.bool(forKey: Keys.fakeGifts) }
+        set { self.defaults.set(newValue, forKey: Keys.fakeGifts) }
     }
 
     // MARK: - Translation without Telegram Premium

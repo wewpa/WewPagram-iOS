@@ -635,6 +635,23 @@ public final class WewPluginManager {
                 WewOverlays.shared.setTint(hex.isEmpty ? nil : hex, pluginId: pluginId)
             }
         }
+        // Visual gifts: a local list, nothing is sent and no stars are spent.
+        let giftsSetFake: @convention(block) (Bool) -> Void = { value in
+            if allow("gifts") {
+                WewPagramSettings.shared.fakeGiftsEnabled = value
+            }
+        }
+        let giftsIsFake: @convention(block) () -> Bool = {
+            return allow("gifts") && WewPagramSettings.shared.fakeGiftsEnabled
+        }
+        let giftsList: @convention(block) () -> String = {
+            return allow("gifts") ? WewFakeGifts.shared.jsonList() : "[]"
+        }
+        let giftsClear: @convention(block) () -> Void = {
+            if allow("gifts") {
+                WewFakeGifts.shared.clear()
+            }
+        }
         let appHaptic: @convention(block) () -> Void = {
             if uiAllowed() {
                 WewOverlays.shared.haptic()
@@ -709,6 +726,10 @@ public final class WewPluginManager {
         context.setObject(uiButton, forKeyedSubscript: "__uiButton" as NSString)
         context.setObject(uiRemove, forKeyedSubscript: "__uiRemove" as NSString)
         context.setObject(uiTint, forKeyedSubscript: "__uiTint" as NSString)
+        context.setObject(giftsSetFake, forKeyedSubscript: "__giftsSetFake" as NSString)
+        context.setObject(giftsIsFake, forKeyedSubscript: "__giftsIsFake" as NSString)
+        context.setObject(giftsList, forKeyedSubscript: "__giftsList" as NSString)
+        context.setObject(giftsClear, forKeyedSubscript: "__giftsClear" as NSString)
         context.setObject(appHaptic, forKeyedSubscript: "__appHaptic" as NSString)
         context.setObject(appOpenURL, forKeyedSubscript: "__appOpenURL" as NSString)
         context.setObject(appCopy, forKeyedSubscript: "__appCopy" as NSString)
@@ -885,6 +906,12 @@ public final class WewPluginManager {
         button: function (o) { __uiButton(__json(o || {})); },
         remove: function (id) { __uiRemove(String(id)); },
         tint: function (hex) { __uiTint(hex ? String(hex) : ''); }
+      },
+      gifts: {
+        setFake: function (v) { __giftsSetFake(!!v); },
+        isFake: function () { return __giftsIsFake(); },
+        list: function () { try { return JSON.parse(__giftsList()); } catch (e) { return []; } },
+        clear: function () { __giftsClear(); }
       },
       app: {
         haptic: function () { __appHaptic(); },
