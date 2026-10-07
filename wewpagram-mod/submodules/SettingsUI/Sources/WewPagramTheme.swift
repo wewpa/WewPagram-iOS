@@ -55,6 +55,8 @@ func wewMenuBackgroundPath() -> String? {
     return plugin.filePath(parts[1])
 }
 
+var wewMenuBaseColor: UIColor?
+
 func wewThemed(_ data: PresentationData) -> PresentationData {
     let menu = WewPagramSettings.shared.menuTheme
     var theme = data.theme
@@ -71,11 +73,16 @@ func wewThemed(_ data: PresentationData) -> PresentationData {
     let text = wewHexColor(menu.text)
     let accent = wewHexColor(menu.accent)
 
-    if hasImage || background != nil || card != nil || text != nil || accent != nil {
+    let sakuraBehind = menu.sakuraOn
+    if hasImage || sakuraBehind || background != nil || card != nil || text != nil || accent != nil {
         var blocksBackground: UIColor? = background
         var itemBackground: UIColor? = card
-        if hasImage {
-            // The picture shows through: the page is transparent, rows are slightly see-through.
+        if hasImage || sakuraBehind {
+            // Remember the colour the page would have had: a base view paints it behind the petals.
+            wewMenuBaseColor = background ?? theme.list.blocksBackgroundColor
+        }
+        if hasImage || sakuraBehind {
+            // The picture / falling petals show through: the page is transparent, rows are slightly see-through.
             blocksBackground = UIColor.clear
             let base = card ?? theme.list.itemBlocksBackgroundColor
             itemBackground = base.withAlphaComponent(0.82)
@@ -203,13 +210,15 @@ final class WewMenuDecorations {
         background.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         background.isUserInteractionEnabled = false
         background.alpha = 0.0
+        background.backgroundColor = wewMenuBaseColor
         host.insertSubview(background, at: 0)
         self.backgroundView = background
 
         let sakura = WewSakuraView(frame: host.bounds)
         sakura.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         sakura.isUserInteractionEnabled = false
-        host.addSubview(sakura)
+        // Behind the list (above the picture), so petals fall in the background.
+        host.insertSubview(sakura, aboveSubview: background)
         self.sakuraView = sakura
     }
 
@@ -224,7 +233,9 @@ final class WewMenuDecorations {
             self.loadedPath = path
             background.image = path.flatMap { UIImage(contentsOfFile: $0) }
         }
-        let backgroundAlpha: CGFloat = path == nil ? 0.0 : 1.0
+        background.backgroundColor = wewMenuBaseColor
+        background.image = path == nil ? nil : background.image
+        let backgroundAlpha: CGFloat = (path == nil && !menu.sakuraOn) ? 0.0 : 1.0
         if background.alpha != backgroundAlpha {
             UIView.animate(withDuration: 0.35) {
                 background.alpha = backgroundAlpha
@@ -240,6 +251,7 @@ final class WewSakuraView: UIView {
     private let emitter = CAEmitterLayer()
     private var enabledByUser = true
     private var running = false
+    private var lastLifetime: Float = 0.0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -256,8 +268,16 @@ final class WewSakuraView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         self.emitter.frame = self.bounds
-        self.emitter.emitterPosition = CGPoint(x: self.bounds.width / 2.0, y: -24.0)
-        self.emitter.emitterSize = CGSize(width: self.bounds.width + 120.0, height: 1.0)
+        self.emitter.emitterPosition = CGPoint(x: self.bounds.width * 0.6, y: -24.0)
+        self.emitter.emitterSize = CGSize(width: self.bounds.width + 240.0, height: 1.0)
+        // Long enough for a petal to reach the very bottom of the screen.
+        let lifetime = Float(self.bounds.height / 45.0) + 6.0
+        if lifetime != self.lastLifetime, let cells = self.emitter.emitterCells {
+            self.lastLifetime = lifetime
+            for cell in cells {
+                cell.lifetime = lifetime
+            }
+        }
     }
 
     func setEnabled(_ value: Bool) {
@@ -294,53 +314,110 @@ final class WewSakuraView: UIView {
         self.emitter.birthRate = 0.0
 
         var cells: [CAEmitterCell] = []
-        // three petal sizes, like the layers on the site
-        for (index, size) in [CGFloat(12.0), CGFloat(17.0), CGFloat(23.0)].enumerated() {
-            guard let image = WewSakuraView.petalImage(size: size, shade: index) else { continue }
+        func makeCell(_ image: UIImage, rate: Float, speed: CGFloat) -> CAEmitterCell {
             let cell = CAEmitterCell()
             cell.contents = image.cgImage
-            cell.birthRate = 1.1 + Float(index) * 0.35
-            cell.lifetime = 16.0
-            cell.lifetimeRange = 4.0
-            cell.velocity = 34.0 + CGFloat(index) * 10.0
-            cell.velocityRange = 22.0
+            cell.birthRate = rate
+            cell.lifetime = 24.0
+            cell.velocity = speed
+            cell.velocityRange = 18.0
             cell.emissionLongitude = .pi / 2.0
-            cell.emissionRange = .pi / 5.0
-            cell.xAcceleration = -4.0
-            cell.yAcceleration = 3.0
-            cell.spin = 0.35
-            cell.spinRange = 1.1
-            cell.scale = 0.75
+            cell.emissionRange = .pi / 4.0
+            cell.xAcceleration = -6.0          // a light breeze to the left
+            cell.yAcceleration = 2.0
+            cell.spin = 0.2
+            cell.spinRange = 1.4
+            cell.scale = 0.8
             cell.scaleRange = 0.35
-            cell.alphaRange = 0.25
-            cell.alphaSpeed = -0.01
-            cells.append(cell)
+            cell.alphaRange = 0.2
+            return cell
+        }
+        // petals of three sizes
+        for (index, size) in [CGFloat(13.0), CGFloat(18.0), CGFloat(24.0)].enumerated() {
+            if let image = WewSakuraView.petalImage(size: size, shade: index) {
+                cells.append(makeCell(image, rate: 1.0 + Float(index) * 0.3, speed: 50.0 + CGFloat(index) * 8.0))
+            }
+        }
+        // and a few whole blossoms
+        for size in [CGFloat(22.0), CGFloat(30.0)] {
+            if let image = WewSakuraView.blossomImage(size: size) {
+                cells.append(makeCell(image, rate: 0.22, speed: 56.0))
+            }
         }
         self.emitter.emitterCells = cells
     }
 
-    // A soft pink petal drawn in code (no image resources needed).
-    private static func petalImage(size: CGFloat, shade: Int) -> UIImage? {
-        let width = size
-        let height = size * 0.62
-        let pinks: [UIColor] = [UIColor(red: 1.0, green: 0.74, blue: 0.84, alpha: 0.92), UIColor(red: 0.99, green: 0.62, blue: 0.78, alpha: 0.88), UIColor(red: 1.0, green: 0.82, blue: 0.9, alpha: 0.9)]
-        let color = pinks[shade % pinks.count]
-        return generateImage(CGSize(width: width, height: height), rotatedContext: { size, context in
-            context.clear(CGRect(origin: .zero, size: size))
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: 0.0, y: size.height / 2.0))
-            path.addQuadCurve(to: CGPoint(x: size.width, y: size.height / 2.0), controlPoint: CGPoint(x: size.width * 0.45, y: -size.height * 0.25))
-            path.addQuadCurve(to: CGPoint(x: 0.0, y: size.height / 2.0), controlPoint: CGPoint(x: size.width * 0.45, y: size.height * 1.25))
-            path.close()
-            context.setFillColor(color.cgColor)
-            context.addPath(path.cgPath)
-            context.fillPath()
+    // The outline of one cherry petal with the typical notch at the tip (unit square, y down).
+    private static func petalPath(in rect: CGRect) -> UIBezierPath {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            return CGPoint(x: rect.minX + x * rect.width, y: rect.minY + y * rect.height)
+        }
+        let path = UIBezierPath()
+        path.move(to: p(0.5, 1.0))
+        path.addCurve(to: p(0.04, 0.24), controlPoint1: p(0.2, 0.86), controlPoint2: p(-0.04, 0.55))
+        path.addCurve(to: p(0.5, 0.2), controlPoint1: p(0.1, -0.02), controlPoint2: p(0.38, 0.0))
+        path.addCurve(to: p(0.96, 0.24), controlPoint1: p(0.62, 0.0), controlPoint2: p(0.9, -0.02))
+        path.addCurve(to: p(0.5, 1.0), controlPoint1: p(1.04, 0.55), controlPoint2: p(0.8, 0.86))
+        path.close()
+        return path
+    }
 
-            context.setStrokeColor(UIColor(white: 1.0, alpha: 0.35).cgColor)
+    private static func fillPetal(_ context: CGContext, rect: CGRect, shade: Int) {
+        let tips: [UIColor] = [UIColor(red: 1.0, green: 0.88, blue: 0.93, alpha: 1.0), UIColor(red: 1.0, green: 0.82, blue: 0.9, alpha: 1.0), UIColor(red: 1.0, green: 0.9, blue: 0.95, alpha: 1.0)]
+        let bases: [UIColor] = [UIColor(red: 0.98, green: 0.6, blue: 0.76, alpha: 1.0), UIColor(red: 0.96, green: 0.52, blue: 0.7, alpha: 1.0), UIColor(red: 0.99, green: 0.68, blue: 0.82, alpha: 1.0)]
+        let path = petalPath(in: rect)
+        context.saveGState()
+        context.addPath(path.cgPath)
+        context.clip()
+        let colors = [tips[shade % 3].cgColor, bases[shade % 3].cgColor] as CFArray
+        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0.0, 1.0]) {
+            context.drawLinearGradient(gradient, start: CGPoint(x: rect.midX, y: rect.minY), end: CGPoint(x: rect.midX, y: rect.maxY), options: [])
+        }
+        context.restoreGState()
+        context.setStrokeColor(UIColor(white: 1.0, alpha: 0.45).cgColor)
+        context.setLineWidth(max(0.5, rect.width * 0.03))
+        context.move(to: CGPoint(x: rect.midX, y: rect.maxY - rect.height * 0.08))
+        context.addLine(to: CGPoint(x: rect.midX, y: rect.minY + rect.height * 0.34))
+        context.strokePath()
+    }
+
+    private static func petalImage(size: CGFloat, shade: Int) -> UIImage? {
+        let inset: CGFloat = 2.0
+        let width = size * 0.72 + inset * 2.0
+        let height = size + inset * 2.0
+        return generateImage(CGSize(width: width, height: height), rotatedContext: { imageSize, context in
+            context.clear(CGRect(origin: .zero, size: imageSize))
+            fillPetal(context, rect: CGRect(x: inset, y: inset, width: size * 0.72, height: size), shade: shade)
+        })
+    }
+
+    // Five petals around a centre with stamens.
+    private static func blossomImage(size: CGFloat) -> UIImage? {
+        return generateImage(CGSize(width: size, height: size), rotatedContext: { imageSize, context in
+            context.clear(CGRect(origin: .zero, size: imageSize))
+            let center = CGPoint(x: imageSize.width / 2.0, y: imageSize.height / 2.0)
+            let petalHeight = size * 0.5
+            let petalWidth = petalHeight * 0.78
+            for i in 0 ..< 5 {
+                context.saveGState()
+                context.translateBy(x: center.x, y: center.y)
+                context.rotate(by: CGFloat(i) * 2.0 * .pi / 5.0)
+                fillPetal(context, rect: CGRect(x: -petalWidth / 2.0, y: -petalHeight * 0.98, width: petalWidth, height: petalHeight), shade: i % 3)
+                context.restoreGState()
+            }
+            context.setFillColor(UIColor(red: 0.86, green: 0.3, blue: 0.5, alpha: 1.0).cgColor)
+            context.fillEllipse(in: CGRect(x: center.x - size * 0.06, y: center.y - size * 0.06, width: size * 0.12, height: size * 0.12))
+            context.setStrokeColor(UIColor(red: 0.9, green: 0.4, blue: 0.58, alpha: 0.9).cgColor)
             context.setLineWidth(0.6)
-            context.move(to: CGPoint(x: size.width * 0.12, y: size.height / 2.0))
-            context.addLine(to: CGPoint(x: size.width * 0.82, y: size.height / 2.0))
-            context.strokePath()
+            for i in 0 ..< 5 {
+                let angle = CGFloat(i) * 2.0 * .pi / 5.0 + 0.3
+                let end = CGPoint(x: center.x + cos(angle) * size * 0.17, y: center.y + sin(angle) * size * 0.17)
+                context.move(to: center)
+                context.addLine(to: end)
+                context.strokePath()
+                context.setFillColor(UIColor(red: 1.0, green: 0.85, blue: 0.4, alpha: 1.0).cgColor)
+                context.fillEllipse(in: CGRect(x: end.x - 0.9, y: end.y - 0.9, width: 1.8, height: 1.8))
+            }
         })
     }
 }

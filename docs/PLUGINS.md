@@ -120,7 +120,7 @@ wew.on("button", function (key) {})                      // нажата кно�
 wew.on("message.send", function (text) { return text; }) // правка исходящего текста [send]
 ```
 Значения `zone`: `login` (экран входа), `chats`, `chat`, `profile`, `contacts`, `calls`, `settings` (любые экраны настроек, включая WewPagram),
-`gifts`, `market` (магазин/аукцион подарков), `stars`, `premium`, `stories`, а все остальные экраны приходят как `other`
+`gifts`, `market` (магазин/аукцион подарков), `stars`, `premium`, `stories`, `camera`, `gallery`, `share`, `stickers`, `media` (выбор вложений), `miniapps`, `folders`, а все остальные экраны приходят как `other`
 (второй аргумент — имя экрана, по нему можно отличить любой экран). Повторный вход в тот же раздел в пределах 1,5 с не считается.
 `className` — имя экрана внутри Telegram, пригодится для отладки.
 

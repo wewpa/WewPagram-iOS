@@ -118,3 +118,45 @@ func wewGlyph(_ glyph: WewGlyph) -> UIImage? {
         }
     })
 }
+
+// Crescent moon for the theme switch (filled in the dark menu, outline in the light one).
+func wewMoonGlyph(filled: Bool) -> UIImage? {
+    let side: CGFloat = 30.0
+    let color = UIColor(rgb: 0x8E7BFF)
+    return generateImage(CGSize(width: side, height: side), rotatedContext: { size, context in
+        context.clear(CGRect(origin: .zero, size: size))
+        let w = size.width
+        context.setStrokeColor(color.cgColor)
+        context.setFillColor(color.cgColor)
+        context.setLineWidth(1.9)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        let outer = CGRect(x: 0.14 * w, y: 0.16 * w, width: 0.68 * w, height: 0.68 * w)
+        let inner = CGRect(x: 0.36 * w, y: 0.04 * w, width: 0.58 * w, height: 0.58 * w)
+
+        // the part of the big circle that is outside the small one
+        context.saveGState()
+        context.addEllipse(in: inner)
+        context.addRect(CGRect(origin: .zero, size: size))
+        context.clip(using: .evenOdd)
+        if filled {
+            context.fillEllipse(in: outer)
+        }
+        context.strokeEllipse(in: outer)
+        context.restoreGState()
+
+        // the edge of the small circle that lies inside the big one
+        context.saveGState()
+        context.addEllipse(in: outer)
+        context.clip()
+        context.strokeEllipse(in: inner)
+        context.restoreGState()
+
+        // a small sparkle
+        context.move(to: CGPoint(x: 0.7 * w, y: 0.26 * w))
+        context.addLine(to: CGPoint(x: 0.7 * w, y: 0.4 * w))
+        context.move(to: CGPoint(x: 0.63 * w, y: 0.33 * w))
+        context.addLine(to: CGPoint(x: 0.77 * w, y: 0.33 * w))
+        context.strokePath()
+    })
+}

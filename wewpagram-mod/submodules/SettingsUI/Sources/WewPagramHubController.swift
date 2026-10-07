@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Display
+import AsyncDisplayKit
 import SwiftSignalKit
 import TelegramCore
 import TelegramPresentationData
@@ -80,7 +81,12 @@ public func wewpagramHubController(context: AccountContext) -> ViewController {
 
     let controller = wewListController(context: context, title: "WewPagram", entries: entries, rightButton: { data in
         let isDark = data.theme.overallDarkAppearance
-        return ItemListNavigationButton(content: .text(isDark ? "☀️" : "🌙"), style: .regular, enabled: true, action: toggleTheme)
+        let node = ASImageNode()
+        node.displaysAsynchronously = false
+        node.image = wewMoonGlyph(filled: isDark)
+        node.frame = CGRect(x: 0.0, y: 0.0, width: 30.0, height: 30.0)
+        node.style.preferredSize = CGSize(width: 30.0, height: 30.0)
+        return ItemListNavigationButton(content: .node(node), style: .regular, enabled: true, action: toggleTheme)
     })
     controllerRef = controller
 

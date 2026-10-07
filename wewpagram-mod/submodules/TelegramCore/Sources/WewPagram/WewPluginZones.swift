@@ -50,6 +50,14 @@ enum WewZoneNames {
         if className.hasPrefix("Stars") { return "stars" }
         if className.hasPrefix("Premium") { return "premium" }
         if className.contains("StoryContainerScreen") { return "stories" }
+        if className.contains("CameraScreen") { return "camera" }
+        if className.contains("GalleryController") { return "gallery" }
+        if className.contains("ShareController") { return "share" }
+        if className.contains("StickerPackScreen") { return "stickers" }
+        if className.contains("MediaPickerScreen") || className.contains("AttachmentController") { return "media" }
+        if className.contains("MiniApp") || className.contains("WebApp") { return "miniapps" }
+        if className.contains("ChatFolder") { return "folders" }
+        if className.contains("CallController") || className.contains("VoiceChat") { return "calls" }
         if className.contains("ChatListController") { return "chats" }
         if className.contains("ChatController") { return "chat" }
         if className.contains("PeerInfoScreen") { return "profile" }
