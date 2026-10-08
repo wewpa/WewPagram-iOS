@@ -367,6 +367,7 @@ public final class WewPluginManager {
     public func reload() {
         self.queue.async {
             WewOverlays.shared.clearAll()
+            WewPluginBridge.shared.clearAll()
             var newRuntimes: [String: WewPluginRuntime] = [:]
             for plugin in self.installedPlugins() where plugin.enabled {
                 if let runtime = self.makeRuntime(for: plugin) {
@@ -652,6 +653,41 @@ public final class WewPluginManager {
                 WewFakeGifts.shared.clear()
             }
         }
+        let ctxAdd: @convention(block) (String) -> Void = { json in
+            guard allow("contextmenu"), let object = WewPluginManager.parseObject(json), let id = object["id"] as? String, let title = object["title"] as? String else { return }
+            WewPluginBridge.shared.addItem(WewContextItem(pluginId: pluginId, id: String(id.prefix(64)), title: String(title.prefix(40))))
+        }
+        let promptBlock: @convention(block) (String, Int) -> Void = { [weak self, weak runtime] json, callbackId in
+            let finish: (String?) -> Void = { value in
+                self?.queue.async {
+                    runtime?.context.objectForKeyedSubscript("__httpResult")?.call(withArguments: [callbackId, value == nil ? 0 : 200, value ?? ""])
+                }
+            }
+            guard uiAllowed(), let object = WewPluginManager.parseObject(json) else {
+                finish(nil)
+                return
+            }
+            let title = String(((object["title"] as? String) ?? "").prefix(80))
+            let subtitle = (object["subtitle"] as? String).map { String($0.prefix(200)) }
+            let value = String(((object["value"] as? String) ?? "").prefix(4000))
+            DispatchQueue.main.async {
+                guard let handler = WewPluginBridge.shared.promptHandler else {
+                    finish(nil)
+                    return
+                }
+                handler(title, subtitle, value, { result in
+                    finish(result)
+                })
+            }
+        }
+        let editLocalBlock: @convention(block) (String, String) -> Void = { key, text in
+            // The edit stays on this device and the native code always appends the "edited in WewPagram" mark.
+            guard allow("localedit"), uiGate.pass(), let id = WewPluginBridge.messageId(fromKey: key) else { return }
+            let value = String(text.prefix(4000))
+            DispatchQueue.main.async {
+                WewPluginBridge.shared.editHandler?(id, value)
+            }
+        }
         let appHaptic: @convention(block) () -> Void = {
             if uiAllowed() {
                 WewOverlays.shared.haptic()
@@ -730,6 +766,9 @@ public final class WewPluginManager {
         context.setObject(giftsIsFake, forKeyedSubscript: "__giftsIsFake" as NSString)
         context.setObject(giftsList, forKeyedSubscript: "__giftsList" as NSString)
         context.setObject(giftsClear, forKeyedSubscript: "__giftsClear" as NSString)
+        context.setObject(ctxAdd, forKeyedSubscript: "__ctxAdd" as NSString)
+        context.setObject(promptBlock, forKeyedSubscript: "__prompt" as NSString)
+        context.setObject(editLocalBlock, forKeyedSubscript: "__editLocal" as NSString)
         context.setObject(appHaptic, forKeyedSubscript: "__appHaptic" as NSString)
         context.setObject(appOpenURL, forKeyedSubscript: "__appOpenURL" as NSString)
         context.setObject(appCopy, forKeyedSubscript: "__appCopy" as NSString)
@@ -907,6 +946,9 @@ public final class WewPluginManager {
         remove: function (id) { __uiRemove(String(id)); },
         tint: function (hex) { __uiTint(hex ? String(hex) : ''); }
       },
+      contextMenu: { add: function (o) { __ctxAdd(__json(o || {})); } },
+      prompt: function (o, cb) { var id = ++__httpSeq; __httpCallbacks[id] = function (st, body) { if (cb) { cb(st === 200 ? body : null); } }; __prompt(__json(o || {}), id); },
+      messages: { editLocal: function (key, text) { __editLocal(String(key), String(text)); } },
       gifts: {
         setFake: function (v) { __giftsSetFake(!!v); },
         isFake: function () { return __giftsIsFake(); },

@@ -1337,25 +1337,24 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             if !isExpired {
                 if !isPoll {
                     if !isCopyProtected {
-                        // WewPagram: local edit. Visible only on this device; the text always gets a visible mark.
-                        actions.append(.action(ContextMenuActionItem(text: "Изменить локально", icon: { theme in
-                            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
-                        }, action: { _, f in
-                            f(.default)
-                            let editController = promptController(
-                                context: context,
-                                text: "Изменить локально",
-                                subtitle: "Видно только на этом устройстве. К тексту добавится пометка «Отредактировано в WewPagram».",
-                                value: wewStripEditedMarker(message.text),
-                                apply: { value in
-                                    guard let value = value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                                        return
+                        // WewPagram: items added by plugins (the local edit is one of them).
+                        if !isPoll {
+                            for wewItem in WewPluginBridge.shared.contextItems() {
+                                actions.append(.action(ContextMenuActionItem(text: wewItem.title, icon: { theme in
+                                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
+                                }, action: { [weak controllerInteraction] _, f in
+                                    f(.default)
+                                    WewPluginBridge.shared.promptHandler = { title, subtitle, value, apply in
+                                        let promptScreen = promptController(context: context, text: title, subtitle: subtitle, value: value, apply: apply)
+                                        controllerInteraction?.presentController(promptScreen, nil)
                                     }
-                                    let _ = wewLocalEditMessage(account: context.account, id: message.id, text: value).startStandalone()
-                                }
-                            )
-                            controllerInteraction.presentController(editController, nil)
-                        })))
+                                    WewPluginBridge.shared.editHandler = { id, text in
+                                        let _ = wewLocalEditMessage(account: context.account, id: id, text: text).startStandalone()
+                                    }
+                                    WewPluginBridge.shared.fire(item: wewItem, id: message.id, text: message.text, outgoing: !message.effectivelyIncoming(context.account.peerId))
+                                })))
+                            }
+                        }
                         actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy, icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
                         }, action: { _, f in

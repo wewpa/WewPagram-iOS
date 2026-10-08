@@ -1,0 +1,10 @@
+{
+  "id": "wew.localedit",
+  "name": "Локальная правка",
+  "version": "1.0.0",
+  "author": "WewPagram",
+  "description": "Пункт «Изменить локально» в меню сообщения. Текст меняется только на этом устройстве, к нему всегда добавляется пометка «Отредактировано в WewPagram».",
+  "icon": "icon.png",
+  "entry": "main.js",
+  "permissions": ["contextmenu", "ui", "localedit"]
+}
