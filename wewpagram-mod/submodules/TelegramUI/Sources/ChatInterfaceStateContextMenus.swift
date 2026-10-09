@@ -1339,20 +1339,48 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     if !isCopyProtected {
                         // WewPagram: items added by plugins (the local edit is one of them).
                         if !isPoll {
-                            for wewItem in WewPluginBridge.shared.contextItems() where !wewItem.onlyEdited || message.text.contains(wewEditedMarker) {
+                            // Built-in fallback: works out of the box and steps aside as soon as a plugin provides its own "edit" item.
+                            var wewItems = WewPluginBridge.shared.contextItems()
+                            if !wewItems.contains(where: { $0.id == "edit" }) {
+                                wewItems.append(WewContextItem(pluginId: "", id: "edit", title: "Изменить локально", onlyEdited: false))
+                                wewItems.append(WewContextItem(pluginId: "", id: "restore", title: "Вернуть оригинал", onlyEdited: true))
+                            }
+                            for wewItem in wewItems where !wewItem.onlyEdited || message.text.contains(wewEditedMarker) {
                                 actions.append(.action(ContextMenuActionItem(text: wewItem.title, icon: { theme in
                                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
                                 }, action: { [weak controllerInteraction] _, f in
                                     f(.default)
+                                    let messageId = message.id
+                                    let account = context.account
                                     WewPluginBridge.shared.promptHandler = { title, subtitle, value, apply in
                                         let promptScreen = promptController(context: context, text: title, subtitle: subtitle, value: value, apply: apply)
                                         controllerInteraction?.presentController(promptScreen, nil)
                                     }
                                     WewPluginBridge.shared.editHandler = { id, text in
-                                        let _ = wewLocalEditMessage(account: context.account, id: id, text: text).startStandalone()
+                                        let _ = wewLocalEditMessage(account: account, id: id, text: text).startStandalone()
                                     }
                                     WewPluginBridge.shared.restoreHandler = { id in
-                                        let _ = wewLocalRestoreMessage(account: context.account, id: id).startStandalone()
+                                        let _ = wewLocalRestoreMessage(account: account, id: id).startStandalone()
+                                    }
+                                    if wewItem.pluginId.isEmpty {
+                                        if wewItem.id == "restore" {
+                                            let _ = wewLocalRestoreMessage(account: account, id: messageId).startStandalone()
+                                        } else {
+                                            let promptScreen = promptController(
+                                                context: context,
+                                                text: "Изменить локально",
+                                                subtitle: "Видно только на этом устройстве. К тексту добавится пометка «Отредактировано в WewPagram».",
+                                                value: wewStripEditedMarker(message.text),
+                                                apply: { value in
+                                                    guard let value = value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                                                        return
+                                                    }
+                                                    let _ = wewLocalEditMessage(account: account, id: messageId, text: value).startStandalone()
+                                                }
+                                            )
+                                            controllerInteraction?.presentController(promptScreen, nil)
+                                        }
+                                        return
                                     }
                                     WewPluginBridge.shared.fire(item: wewItem, id: message.id, text: message.text, outgoing: !message.effectivelyIncoming(context.account.peerId))
                                 })))

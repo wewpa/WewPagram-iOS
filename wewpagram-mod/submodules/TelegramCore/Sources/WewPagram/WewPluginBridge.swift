@@ -7,6 +7,13 @@ public struct WewContextItem {
     public let id: String
     public let title: String
     public let onlyEdited: Bool   // show only on messages that were edited locally
+
+    public init(pluginId: String, id: String, title: String, onlyEdited: Bool) {
+        self.pluginId = pluginId
+        self.id = id
+        self.title = title
+        self.onlyEdited = onlyEdited
+    }
 }
 
 // Glue between plugins and the chat screen: menu items a plugin adds to the message
