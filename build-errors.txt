@@ -1,0 +1,164 @@
+run: 37982415619  sha: 1bd545e9075cb0b22e6485756c89cab24482ec93
+=== error lines ===
+6435:ERROR: /Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/submodules/Postbox/BUILD:5:14: Compiling Swift module //submodules/Postbox:Postbox failed: (Exit 1): worker failed: error executing SwiftCompile command (from swift_library rule target //submodules/Postbox:Postbox) 
+6446:submodules/Postbox/Sources/AllTypingDraftsView.swift:7:72: error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+6450:   |                                                                        `- error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+6454:submodules/Postbox/Sources/AllTypingDraftsView.swift:18:49: error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+6458:   |                                                 `- error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+6462:submodules/Postbox/Sources/AllTypingDraftsView.swift:32:70: error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+6466:   |                                                                      `- error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+6470:submodules/Postbox/Sources/MessageHistoryView.swift:859:71: error: value of type 'PostboxImpl' has no member 'cachedPeerDataPeers'
+6474:     |                                                                       `- error: value of type 'PostboxImpl' has no member 'cachedPeerDataPeers'
+6477:Target //Telegram:Telegram failed to build
+6481:ERROR: Build did NOT complete successfully
+=== last 150 lines ===
+[6,114 / 7,829] Compiling third-party/webrtc/webrtc/video/video_stream_decoder2.cc; 0s local ... (3 actions, 2 running)
+[6,116 / 7,829] Compiling Rust rlib proc_macro2 v1.0.107 (22 files) [for tool]; 1s local ... (3 actions, 2 running)
+[6,124 / 7,829] Compiling third-party/webrtc/webrtc/video/video_stream_encoder.cc; 1s local ... (3 actions, 2 running)
+[6,126 / 7,829] Compiling third-party/webrtc/webrtc/video/video_stream_encoder.cc; 2s local ... (3 actions running)
+[6,128 / 7,829] Compiling third-party/webrtc/webrtc/video/video_stream_encoder.cc; 3s local ... (3 actions running)
+[6,129 / 7,829] Compiling third-party/webrtc/webrtc/video/video_stream_encoder.cc; 5s local ... (3 actions, 2 running)
+[6,130 / 7,829] Compiling third-party/webrtc/webrtc/video/video_stream_encoder.cc; 7s local ... (3 actions running)
+[6,134 / 7,829] Compiling Rust proc-macro thiserror_impl v2.0.17 (11 files) [for tool]; 0s local ... (3 actions running)
+[6,135 / 7,829] Compiling Rust proc-macro thiserror_impl v2.0.17 (11 files) [for tool]; 3s local ... (3 actions, 2 running)
+[6,138 / 7,829] Compiling Rust proc-macro thiserror_impl v2.0.17 (11 files) [for tool]; 4s local ... (3 actions running)
+[6,143 / 7,829] Compiling Swift module //submodules/InvisibleInkDustNode:InvisibleInkDustNode; 2s worker ... (3 actions, 2 running)
+[6,148 / 7,829] Compiling Rust rlib mtproto_core v0.1.0 (42 files); 1s local ... (3 actions, 2 running)
+[6,151 / 7,829] Compiling Rust rlib mtproto_core v0.1.0 (42 files); 2s local ... (3 actions running)
+[6,153 / 7,829] Compiling Rust rlib mtproto_core v0.1.0 (42 files); 3s local ... (3 actions running)
+[6,154 / 7,829] Compiling Rust rlib mtproto_core v0.1.0 (42 files); 4s local ... (3 actions running)
+[6,155 / 7,829] Compiling Rust rlib mtproto_core v0.1.0 (42 files); 5s local ... (3 actions running)
+[6,156 / 7,829] Compiling Rust rlib mtproto_core v0.1.0 (42 files); 6s local ... (3 actions running)
+[6,159 / 7,829] Compiling third-party/webrtc/webrtc/net/dcsctp/socket/dcsctp_socket.cc; 0s local ... (3 actions running)
+[6,160 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/DustEffect:DustEffect; 2s worker ... (3 actions, 2 running)
+[6,164 / 7,829] Compiling Rust rlib mtproto_engine v0.1.0 (20 files); 3s local ... (3 actions, 2 running)
+[6,166 / 7,829] Compiling Rust rlib mtproto_engine v0.1.0 (20 files); 4s local ... (3 actions running)
+[6,167 / 7,829] Compiling Rust rlib mtproto_engine v0.1.0 (20 files); 5s local ... (3 actions running)
+[6,168 / 7,829] Compiling Rust rlib mtproto_engine v0.1.0 (20 files); 6s local ... (3 actions running)
+[6,169 / 7,829] Compiling Rust rlib mtproto_engine v0.1.0 (20 files); 7s local ... (3 actions running)
+[6,170 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 5s worker ... (3 actions running)
+[6,172 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 6s worker ... (2 actions running)
+[6,173 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 7s worker ... (3 actions running)
+[6,174 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 8s worker ... (3 actions running)
+[6,175 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 9s worker ... (3 actions running)
+[6,176 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 10s worker ... (3 actions running)
+[6,177 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 11s worker ... (3 actions running)
+[6,178 / 7,829] Compiling Swift module //submodules/GradientBackground:GradientBackground; 12s worker ... (3 actions running)
+[6,180 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 8s local ... (3 actions running)
+[6,181 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 9s local ... (3 actions, 2 running)
+[6,182 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 10s local ... (3 actions, 2 running)
+[6,185 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 12s local ... (3 actions, 2 running)
+[6,187 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 14s local ... (3 actions running)
+[6,189 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 15s local ... (3 actions running)
+[6,190 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 16s local ... (3 actions running)
+[6,194 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 17s local ... (3 actions running)
+[6,195 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 18s local ... (3 actions running)
+[6,198 / 7,829] Compiling Rust staticlib mtproto_engine_ffi_archive v0.1.0 (1 file); 19s local ... (3 actions running)
+[6,202 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/LegacyMessageInputPanelInputView:LegacyMessageInputPanelInputView; 0s worker ... (3 actions running)
+[6,205 / 7,829] Compiling Swift module //submodules/MTProtoRustEngine:MTProtoRustEngineMapping; 1s worker ... (3 actions running)
+[6,208 / 7,829] Compiling Swift module //submodules/AnimatedCountLabelNode:AnimatedCountLabelNode; 1s worker ... (3 actions running)
+[6,211 / 7,829] Compiling Swift module //submodules/AnimatedCountLabelNode:AnimatedCountLabelNode; 2s worker ... (3 actions running)
+[6,214 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 1s worker ... (3 actions running)
+[6,217 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 2s worker ... (3 actions running)
+[6,218 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 3s worker ... (3 actions running)
+[6,221 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 4s worker ... (3 actions running)
+[6,223 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 5s worker ... (3 actions, 2 running)
+[6,225 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 6s worker ... (3 actions running)
+[6,228 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 7s worker ... (3 actions running)
+[6,231 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 8s worker ... (3 actions running)
+[6,233 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 10s worker ... (3 actions running)
+[6,234 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 11s worker ... (3 actions running)
+[6,236 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 12s worker ... (3 actions, 2 running)
+[6,238 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 13s worker ... (3 actions running)
+[6,241 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 14s worker ... (3 actions running)
+[6,242 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 15s worker ... (3 actions, 2 running)
+[6,242 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 17s worker ... (3 actions running)
+[6,244 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 18s worker ... (3 actions running)
+[6,245 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 19s worker ... (3 actions running)
+[6,246 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 20s worker ... (3 actions running)
+[6,247 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 21s worker ... (3 actions running)
+[6,248 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/CoreList:CoreList; 23s worker ... (3 actions running)
+[6,251 / 7,829] Compiling Swift module //submodules/GraphCore:GraphCore; 5s worker ... (3 actions running)
+[6,252 / 7,829] Compiling Swift module //submodules/GraphCore:GraphCore; 7s worker ... (3 actions, 2 running)
+[6,255 / 7,829] Compiling Swift module //submodules/GraphCore:GraphCore; 8s worker ... (3 actions, 2 running)
+[6,256 / 7,829] Compiling Swift module //submodules/GraphCore:GraphCore; 9s worker ... (3 actions, 2 running)
+[6,259 / 7,829] Compiling Swift module //submodules/GraphCore:GraphCore; 11s worker ... (3 actions running)
+[6,264 / 7,829] Compiling Swift module //submodules/GraphCore:GraphCore; 12s worker ... (3 actions running)
+[6,265 / 7,829] Compiling Swift module //submodules/GraphCore:GraphCore; 14s worker ... (3 actions, 2 running)
+[6,267 / 7,829] Compiling Swift module //submodules/WidgetItems:WidgetItems; 3s worker ... (3 actions running)
+[6,272 / 7,829] Compiling third-party/webrtc/webrtc/net/dcsctp/packet/parameter/ssn_tsn_reset_request_parameter.cc; 0s local ... (3 actions running)
+[6,276 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/MultiScaleTextNode:MultiScaleTextNode; 1s worker ... (3 actions, 2 running)
+[6,280 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/MultiScaleTextNode:MultiScaleTextNode; 2s worker ... (3 actions, 2 running)
+[6,285 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 1s worker ... (3 actions, 2 running)
+[6,286 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 2s worker ... (3 actions running)
+[6,287 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 3s worker ... (3 actions running)
+[6,288 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 4s worker ... (3 actions running)
+[6,289 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 5s worker ... (3 actions, 2 running)
+[6,290 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 7s worker ... (3 actions, 2 running)
+[6,291 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 8s worker ... (3 actions, 2 running)
+[6,291 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 9s worker ... (3 actions running)
+[6,292 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 12s worker ... (3 actions, 2 running)
+[6,293 / 7,829] Compiling Swift module //third-party/SwiftMath:SwiftMath; 14s worker ... (3 actions, 2 running)
+ERROR: /Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/submodules/Postbox/BUILD:5:14: Compiling Swift module //submodules/Postbox:Postbox failed: (Exit 1): worker failed: error executing SwiftCompile command (from swift_library rule target //submodules/Postbox:Postbox) 
+  (cd /private/var/tmp/_bazel_wewpagram/29f5729db1d87cf1fcc4436aa38123e2/execroot/_main && \
+  exec env - \
+    APPLE_SDK_PLATFORM=iPhoneOS \
+    APPLE_SDK_VERSION_OVERRIDE=26.2 \
+    PATH=/bin:/usr/bin:/usr/local/bin \
+    XCODE_VERSION_OVERRIDE=26.2.0.17C52 \
+    ZERO_AR_DATE=1 \
+  bazel-out/darwin_arm64-opt-exec/bin/external/rules_swift+/tools/worker/worker swiftc @bazel-out/ios_arm64-opt-ios-arm64-min15.0-ST-4fc4d341170e/bin/submodules/Postbox/Postbox.swiftmodule-0.params)
+# Configuration: 6476fa226ff1d258cbb75393e448e0aeec9a487bfac34ba5f61fd830a27e11f9
+# Execution platform: @@platforms//host:host
+submodules/Postbox/Sources/AllTypingDraftsView.swift:7:72: error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+ 5 | 
+ 6 |     init(postbox: PostboxImpl) {
+ 7 |         self.keys = Set(postbox.currentTypingDrafts.filter({ !$0.value.isStopped }).keys)
+   |                                                                        `- error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+ 8 |     }
+ 9 | 
+
+submodules/Postbox/Sources/AllTypingDraftsView.swift:18:49: error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+16 |             // A draft transitioning to stopped arrives as a non-nil value: it stays on
+17 |             // screen, but it must drop out of this view so the send gate opens.
+18 |             if let value = update.value, !value.isStopped {
+   |                                                 `- error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+19 |                 if self.keys.insert(key).inserted {
+20 |                     updated = true
+
+submodules/Postbox/Sources/AllTypingDraftsView.swift:32:70: error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+30 | 
+31 |     func refreshDueToExternalTransaction(postbox: PostboxImpl) -> Bool {
+32 |         let new = Set(postbox.currentTypingDrafts.filter({ !$0.value.isStopped }).keys)
+   |                                                                      `- error: value of type 'PostboxImpl.TypingDraft' has no member 'isStopped'
+33 |         if new == self.keys {
+34 |             return false
+
+submodules/Postbox/Sources/MessageHistoryView.swift:859:71: error: value of type 'PostboxImpl' has no member 'cachedPeerDataPeers'
+ 857 |             case let .cachedPeerDataPeers(peerId, _):
+ 858 |                 if let updatedData = transaction.currentUpdatedCachedPeerData[peerId]?.updated {
+ 859 |                     updated[i] = .cachedPeerDataPeers(peerId, postbox.cachedPeerDataPeers(peerId: peerId, cachedData: updatedData))
+     |                                                                       `- error: value of type 'PostboxImpl' has no member 'cachedPeerDataPeers'
+ 860 |                     hasChanges = true
+ 861 |                 }
+Target //Telegram:Telegram failed to build
+[6,296 / 7,829] checking cached actions
+INFO: Elapsed time: 2599.226s, Critical Path: 376.68s
+INFO: 6296 processes: 1674 internal, 4525 local, 97 worker.
+ERROR: Build did NOT complete successfully
+Traceback (most recent call last):
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/Make.py", line 1413, in <module>
+    build(bazel=bazel_path, arguments=args)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/Make.py", line 693, in build
+    bazel_command_line.invoke_build()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/Make.py", line 326, in invoke_build
+    call_executable(combined_arguments)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/BuildEnvironment.py", line 104, in call_executable
+    subprocess.check_call(resolved_arguments, env=resolved_env)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 420, in check_call
+    raise CalledProcessError(retcode, cmd)
+subprocess.CalledProcessError: Command '['/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-input/bazel-9.2.0-darwin-arm64', '--output_user_root=/private/var/tmp/_bazel_wewpagram', 'build', 'Telegram/Telegram', '--announce_rc', '--features=swift.use_global_module_cache', '--verbose_failures', '--remote_cache_async', '--define=buildNumber=31573', '-c', 'opt', '--ios_multi_cpus=arm64', '--watchos_cpus=arm64_32', '--apple_generate_dsym', '--output_groups=+dsyms', '--@rules_rust//rust/settings:lto=fat', '--features=swift.opt_uses_wmo', '--features=swift.opt_uses_osize', '--features=dead_strip', '--objc_enable_binary_stripping']' returned non-zero exit status 1.
