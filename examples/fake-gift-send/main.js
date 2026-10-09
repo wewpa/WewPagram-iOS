@@ -14,8 +14,16 @@ wew.contextMenu.add({
 // Обработчик нажатия на кнопку в контекстном меню
 wew.on("contextmenu", function (id, msg) {
   if (id === "exact_time") {
-    // Получаем время отправки сообщения
-    var timestamp = msg.date; // Unix timestamp в секундах
+    // Логируем объект для дебага
+    wew.log("Message object:", JSON.stringify(msg));
+    
+    // Пытаемся получить время - проверяем разные поля
+    var timestamp = msg.date || msg.timestamp || msg.time || msg.sentTime || 0;
+    
+    if (!timestamp || timestamp === 0) {
+      wew.alert("Ошибка: время не найдено в объекте сообщения");
+      return;
+    }
     
     // Преобразуем в дату
     var date = new Date(timestamp * 1000);
