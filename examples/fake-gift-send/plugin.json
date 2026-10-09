@@ -1,0 +1,10 @@
+{
+  "id": "wew.fakegiftsend",
+  "name": "Фейк-отправка подарков",
+  "version": "1.0.0",
+  "author": "WewPagram",
+  "description": "Позволяет визуально отправлять подарки из маркета. Подарок добавляется на профиль получателя локально.",
+  "icon": "icon.png",
+  "entry": "main.js",
+  "permissions": ["gift", "ui"]
+}
