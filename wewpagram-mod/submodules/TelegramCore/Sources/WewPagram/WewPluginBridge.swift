@@ -6,6 +6,7 @@ public struct WewContextItem {
     public let pluginId: String
     public let id: String
     public let title: String
+    public let onlyEdited: Bool   // show only on messages that were edited locally
 }
 
 // Glue between plugins and the chat screen: menu items a plugin adds to the message
@@ -19,6 +20,7 @@ public final class WewPluginBridge {
 
     public var promptHandler: ((String, String?, String, @escaping (String?) -> Void) -> Void)?
     public var editHandler: ((MessageId, String) -> Void)?
+    public var restoreHandler: ((MessageId) -> Void)?
 
     private init() {}
 
@@ -59,7 +61,8 @@ public final class WewPluginBridge {
         let payload: [String: Any] = [
             "key": WewPluginBridge.messageKey(id),
             "text": wewStripEditedMarker(text),
-            "outgoing": outgoing
+            "outgoing": outgoing,
+            "edited": text.contains(wewEditedMarker)
         ]
         WewPluginManager.shared.dispatch(pluginId: item.pluginId, event: "contextmenu", args: [item.id, payload])
     }

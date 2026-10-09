@@ -168,10 +168,11 @@ wew.translate('Hello', 'ru', function (text) {})   // Google Translate [http]; n
 
 ## Меню сообщения, окно ввода, локальная правка
 ```js
-wew.contextMenu.add({id: 'edit', title: 'Изменить локально'})   // [contextmenu] до 4 пунктов на плагин
-wew.on('contextmenu', function (id, msg) {})                    // msg: {key, text, outgoing}
+wew.contextMenu.add({id: 'edit', title: 'Изменить локально'})   // [contextmenu] до 4 пунктов на плагин; when: 'edited' — только на локально изменённых
+wew.on('contextmenu', function (id, msg) {})                    // msg: {key, text, outgoing, edited}
 wew.prompt({title, subtitle, value}, function (text) {})        // [ui] нативное окно с полем; null — отмена
 wew.messages.editLocal(msg.key, 'новый текст')                  // [localedit]
+wew.messages.restoreLocal(msg.key)                              // [localedit] вернуть оригинал (его хранит приложение)
 ```
 `editLocal` меняет текст только в базе на этом устройстве, собеседник ничего не видит. Приложение само добавляет к тексту курсивную строку «✎ Отредактировано в WewPagram»: плагин не может её убрать или изменить. Пункты меню не показываются в чатах с защитой от копирования и на опросах. Готовый плагин: `examples/local-edit` (архив `local-edit.zip`).
 

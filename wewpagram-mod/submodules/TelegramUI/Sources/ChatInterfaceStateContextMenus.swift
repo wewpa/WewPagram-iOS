@@ -1339,7 +1339,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     if !isCopyProtected {
                         // WewPagram: items added by plugins (the local edit is one of them).
                         if !isPoll {
-                            for wewItem in WewPluginBridge.shared.contextItems() {
+                            for wewItem in WewPluginBridge.shared.contextItems() where !wewItem.onlyEdited || message.text.contains(wewEditedMarker) {
                                 actions.append(.action(ContextMenuActionItem(text: wewItem.title, icon: { theme in
                                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
                                 }, action: { [weak controllerInteraction] _, f in
@@ -1350,6 +1350,9 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                                     }
                                     WewPluginBridge.shared.editHandler = { id, text in
                                         let _ = wewLocalEditMessage(account: context.account, id: id, text: text).startStandalone()
+                                    }
+                                    WewPluginBridge.shared.restoreHandler = { id in
+                                        let _ = wewLocalRestoreMessage(account: context.account, id: id).startStandalone()
                                     }
                                     WewPluginBridge.shared.fire(item: wewItem, id: message.id, text: message.text, outgoing: !message.effectivelyIncoming(context.account.peerId))
                                 })))

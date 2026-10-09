@@ -657,7 +657,7 @@ public final class WewPluginManager {
         }
         let ctxAdd: @convention(block) (String) -> Void = { json in
             guard allow("contextmenu"), let object = WewPluginManager.parseObject(json), let id = object["id"] as? String, let title = object["title"] as? String else { return }
-            WewPluginBridge.shared.addItem(WewContextItem(pluginId: pluginId, id: String(id.prefix(64)), title: String(title.prefix(40))))
+            WewPluginBridge.shared.addItem(WewContextItem(pluginId: pluginId, id: String(id.prefix(64)), title: String(title.prefix(40)), onlyEdited: (object["when"] as? String) == "edited"))
         }
         let promptBlock: @convention(block) (String, Int) -> Void = { [weak self, weak runtime] json, callbackId in
             let finish: (String?) -> Void = { value in
@@ -717,6 +717,12 @@ public final class WewPluginManager {
                 return
             }
             WewOverlays.shared.choose(title: String(((object["title"] as? String) ?? "").prefix(80)), items: items, completion: finish)
+        }
+        let restoreLocalBlock: @convention(block) (String) -> Void = { key in
+            guard allow("localedit"), uiGate.pass(), let id = WewPluginBridge.messageId(fromKey: key) else { return }
+            DispatchQueue.main.async {
+                WewPluginBridge.shared.restoreHandler?(id)
+            }
         }
         let appHaptic: @convention(block) () -> Void = {
             if uiAllowed() {
@@ -802,6 +808,7 @@ public final class WewPluginManager {
         context.setObject(clipGet, forKeyedSubscript: "__clipGet" as NSString)
         context.setObject(clipPaste, forKeyedSubscript: "__clipPaste" as NSString)
         context.setObject(chooseBlock, forKeyedSubscript: "__choose" as NSString)
+        context.setObject(restoreLocalBlock, forKeyedSubscript: "__restoreLocal" as NSString)
         context.setObject(appHaptic, forKeyedSubscript: "__appHaptic" as NSString)
         context.setObject(appOpenURL, forKeyedSubscript: "__appOpenURL" as NSString)
         context.setObject(appCopy, forKeyedSubscript: "__appCopy" as NSString)
@@ -986,7 +993,7 @@ public final class WewPluginManager {
       choose: function (o, cb) { var id = ++__httpSeq; __httpCallbacks[id] = function (st, body) { if (cb) { cb(st === 200 ? parseInt(body, 10) : -1); } }; __choose(__json(o || {}), id); },
       contextMenu: { add: function (o) { __ctxAdd(__json(o || {})); } },
       prompt: function (o, cb) { var id = ++__httpSeq; __httpCallbacks[id] = function (st, body) { if (cb) { cb(st === 200 ? body : null); } }; __prompt(__json(o || {}), id); },
-      messages: { editLocal: function (key, text) { __editLocal(String(key), String(text)); } },
+      messages: { editLocal: function (key, text) { __editLocal(String(key), String(text)); }, restoreLocal: function (key) { __restoreLocal(String(key)); } },
       gifts: {
         setFake: function (v) { __giftsSetFake(!!v); },
         isFake: function () { return __giftsIsFake(); },
