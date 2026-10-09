@@ -1,0 +1,10 @@
+{
+  "id": "wew.clipboard",
+  "name": "Буфер обмена",
+  "version": "1.0.0",
+  "author": "WewPagram",
+  "description": "Иконка буфера обмена над клавиатурой в чате: история скопированного и быстрая вставка в поле ввода.",
+  "icon": "icon.png",
+  "entry": "main.js",
+  "permissions": ["ui", "clipboard"]
+}

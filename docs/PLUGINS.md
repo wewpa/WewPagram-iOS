@@ -49,7 +49,7 @@ my-plugin.zip
 | `theme` | `wew.theme.*` — оформление меню WewPagram |
 | `ui` | `wew.ui.*` (плашки и кнопки поверх любого экрана), `wew.app.haptic()`, `wew.app.openURL()` |
 | `gifts` | `wew.gifts.*` — визуальные подарки (без оплаты и отправки) |
-| `clipboard` | `wew.app.copy()` |
+| `clipboard` | `wew.app.copy()`, `wew.clipboard.get()`, `wew.clipboard.paste()` |
 
 ## API
 ```js
@@ -174,3 +174,12 @@ wew.prompt({title, subtitle, value}, function (text) {})        // [ui] нати
 wew.messages.editLocal(msg.key, 'новый текст')                  // [localedit]
 ```
 `editLocal` меняет текст только в базе на этом устройстве, собеседник ничего не видит. Приложение само добавляет к тексту курсивную строку «✎ Отредактировано в WewPagram»: плагин не может её убрать или изменить. Пункты меню не показываются в чатах с защитой от копирования и на опросах. Готовый плагин: `examples/local-edit` (архив `local-edit.zip`).
+
+## Иконка над клавиатурой, буфер обмена, список выбора
+```js
+wew.ui.button({id: 'clip', zone: 'chat', icon: 'clipboard', position: 'input', key: 'open'})  // круглая иконка над полем ввода, поднимается вместе с клавиатурой
+wew.clipboard.get()                       // [clipboard] текст из системного буфера; iOS может спросить разрешение, вызывайте после нажатия
+wew.clipboard.paste('текст', function (ok) {})   // [clipboard] кладёт в буфер и вставляет в активное поле ввода
+wew.choose({title: 'Заголовок', items: ['a', 'b']}, function (index) {})   // [ui] нативный список; -1 — отмена
+```
+Готовый плагин: `examples/clipboard` (архив `clipboard.zip`).

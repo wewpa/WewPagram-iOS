@@ -78,6 +78,8 @@ public struct WewOverlay {
     public var textColor: String?
     public var bottom: Bool
     public var key: String
+    public var icon: String? = nil   // a round icon button ("clipboard")
+    public var lift: Bool = false     // sits above the input panel and rises with the keyboard
 }
 
 private func wewColor(_ hex: String?, fallback: UIColor) -> UIColor {
@@ -120,7 +122,17 @@ public final class WewOverlays {
     private var items: [WewOverlay] = []
     private var tints: [String: String] = [:]
 
-    private init() {}
+    private var keyboardHeight: CGFloat = 0.0
+
+    private init() {
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { notification in
+            let screenHeight = UIScreen.main.bounds.height
+            if let frame = (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue {
+                WewOverlays.shared.keyboardHeight = max(0.0, screenHeight - frame.minY)
+                WewZones.refreshCurrent()
+            }
+        }
+    }
 
     func add(_ overlay: WewOverlay) {
         self.lock.lock()
@@ -178,6 +190,63 @@ public final class WewOverlays {
         }
     }
 
+    // Reading another app's clipboard makes iOS ask the user for permission, so a plugin
+    // should only call this after a tap.
+    func pasteboardString() -> String {
+        if Thread.isMainThread {
+            return UIPasteboard.general.string ?? ""
+        }
+        var result = ""
+        DispatchQueue.main.sync {
+            result = UIPasteboard.general.string ?? ""
+        }
+        return result
+    }
+
+    // Puts the text on the clipboard and pastes it into the focused text field, if there is one.
+    func paste(_ text: String, completion: @escaping (Bool) -> Void) {
+        DispatchQueue.main.async {
+            UIPasteboard.general.string = text
+            var handled = false
+            if let app = wewSharedApplication() {
+                let selector = NSSelectorFromString("sendAction:to:from:forEvent:")
+                if app.responds(to: selector) {
+                    typealias SendFunction = @convention(c) (AnyObject, Selector, Selector, AnyObject?, AnyObject?, UIEvent?) -> Bool
+                    let function = unsafeBitCast(app.method(for: selector), to: SendFunction.self)
+                    handled = function(app, selector, #selector(UIResponder.paste(_:)), nil, nil, nil)
+                }
+            }
+            completion(handled)
+        }
+    }
+
+    // A plain native action sheet; the result is the index of the chosen row or nil.
+    func choose(title: String, items: [String], completion: @escaping (Int?) -> Void) {
+        DispatchQueue.main.async {
+            guard var top = wewKeyWindow()?.rootViewController else {
+                completion(nil)
+                return
+            }
+            while let next = top.presentedViewController {
+                top = next
+            }
+            let sheet = UIAlertController(title: title.isEmpty ? nil : title, message: nil, preferredStyle: .actionSheet)
+            for (index, item) in items.prefix(14).enumerated() {
+                sheet.addAction(UIAlertAction(title: String(item.prefix(70)), style: .default, handler: { _ in
+                    completion(index)
+                }))
+            }
+            sheet.addAction(UIAlertAction(title: "Отмена", style: .cancel, handler: { _ in
+                completion(nil)
+            }))
+            if let popover = sheet.popoverPresentationController {
+                popover.sourceView = top.view
+                popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.maxY - 60.0, width: 1.0, height: 1.0)
+            }
+            top.present(sheet, animated: true, completion: nil)
+        }
+    }
+
     func copy(_ text: String) {
         DispatchQueue.main.async {
             UIPasteboard.general.string = text
@@ -211,11 +280,34 @@ public final class WewOverlays {
         container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         container.backgroundColor = .clear
 
+        // Round icon buttons above the input panel; they ride on top of the keyboard.
+        var liftX = view.bounds.width - 14.0
+        let liftBase = view.bounds.height - max(self.keyboardHeight, view.safeAreaInsets.bottom) - 54.0
+        for item in matching where item.lift {
+            let size: CGFloat = 44.0
+            liftX -= size
+            let button = UIButton(type: .custom)
+            button.frame = CGRect(x: liftX, y: liftBase - size - 8.0, width: size, height: size)
+            button.backgroundColor = wewColor(item.color, fallback: UIColor(red: 0.56, green: 0.48, blue: 1.0, alpha: 0.92))
+            button.layer.cornerRadius = size / 2.0
+            button.autoresizingMask = [.flexibleLeftMargin, .flexibleTopMargin]
+            button.setImage(wewOverlayGlyph(item.icon ?? "", color: wewColor(item.textColor, fallback: .white)), for: .normal)
+            let pluginId = item.pluginId
+            let key = item.key
+            let target = WewButtonTarget(action: {
+                WewPluginManager.shared.dispatch(pluginId: pluginId, event: "button", args: [key])
+            })
+            objc_setAssociatedObject(button, &wewButtonTargetKey, target, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            button.addTarget(target, action: #selector(WewButtonTarget.fire), for: .touchUpInside)
+            container.addSubview(button)
+            liftX -= 8.0
+        }
+
         var topY = view.safeAreaInsets.top + 6.0
         var bottomY = view.bounds.height - view.safeAreaInsets.bottom - 84.0
         let maxWidth = view.bounds.width - 32.0
 
-        for item in matching {
+        for item in matching where !item.lift {
             let background = wewColor(item.color, fallback: item.kind == "button" ? UIColor(red: 0.56, green: 0.48, blue: 1.0, alpha: 1.0) : UIColor(white: 0.1, alpha: 0.9))
             let foreground = wewColor(item.textColor, fallback: .white)
             let label = UILabel()
@@ -474,5 +566,33 @@ public final class WewZones {
 
         WewPluginPresenter.shared.flush()
         WewPluginManager.shared.dispatchAll(event: "zone.open", args: [zone, className])
+    }
+}
+
+// Line icons for round overlay buttons.
+private func wewOverlayGlyph(_ name: String, color: UIColor) -> UIImage? {
+    let size = CGSize(width: 24.0, height: 24.0)
+    let renderer = UIGraphicsImageRenderer(size: size)
+    return renderer.image { rendererContext in
+        let context = rendererContext.cgContext
+        context.setStrokeColor(color.cgColor)
+        context.setFillColor(color.cgColor)
+        context.setLineWidth(1.9)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        switch name {
+        case "clipboard":
+            context.addPath(UIBezierPath(roundedRect: CGRect(x: 5.0, y: 4.5, width: 14.0, height: 16.5), cornerRadius: 2.5).cgPath)
+            context.strokePath()
+            context.addPath(UIBezierPath(roundedRect: CGRect(x: 8.5, y: 2.5, width: 7.0, height: 4.0), cornerRadius: 1.5).cgPath)
+            context.fillPath()
+            context.move(to: CGPoint(x: 8.5, y: 11.5))
+            context.addLine(to: CGPoint(x: 15.5, y: 11.5))
+            context.move(to: CGPoint(x: 8.5, y: 15.5))
+            context.addLine(to: CGPoint(x: 13.5, y: 15.5))
+            context.strokePath()
+        default:
+            context.fillEllipse(in: CGRect(x: 9.0, y: 9.0, width: 6.0, height: 6.0))
+        }
     }
 }

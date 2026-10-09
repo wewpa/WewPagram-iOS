@@ -623,7 +623,9 @@ public final class WewPluginManager {
                 color: object["color"] as? String,
                 textColor: object["textColor"] as? String,
                 bottom: (object["position"] as? String) != "top",
-                key: (object["key"] as? String) ?? ""
+                key: (object["key"] as? String) ?? "",
+                icon: object["icon"] as? String,
+                lift: (object["position"] as? String) == "input"
             ))
         }
         let uiRemove: @convention(block) (String) -> Void = { id in
@@ -687,6 +689,34 @@ public final class WewPluginManager {
             DispatchQueue.main.async {
                 WewPluginBridge.shared.editHandler?(id, value)
             }
+        }
+        let clipGet: @convention(block) () -> String = {
+            guard allow("clipboard"), uiGate.pass() else { return "" }
+            return String(WewOverlays.shared.pasteboardString().prefix(20000))
+        }
+        let clipPaste: @convention(block) (String, Int) -> Void = { [weak self, weak runtime] text, callbackId in
+            let finish: (Bool) -> Void = { ok in
+                self?.queue.async {
+                    runtime?.context.objectForKeyedSubscript("__httpResult")?.call(withArguments: [callbackId, ok ? 200 : 0, ""])
+                }
+            }
+            guard allow("clipboard"), uiGate.pass() else {
+                finish(false)
+                return
+            }
+            WewOverlays.shared.paste(String(text.prefix(20000)), completion: finish)
+        }
+        let chooseBlock: @convention(block) (String, Int) -> Void = { [weak self, weak runtime] json, callbackId in
+            let finish: (Int?) -> Void = { index in
+                self?.queue.async {
+                    runtime?.context.objectForKeyedSubscript("__httpResult")?.call(withArguments: [callbackId, index == nil ? 0 : 200, index.map { String($0) } ?? ""])
+                }
+            }
+            guard uiAllowed(), let object = WewPluginManager.parseObject(json), let items = object["items"] as? [String], !items.isEmpty else {
+                finish(nil)
+                return
+            }
+            WewOverlays.shared.choose(title: String(((object["title"] as? String) ?? "").prefix(80)), items: items, completion: finish)
         }
         let appHaptic: @convention(block) () -> Void = {
             if uiAllowed() {
@@ -769,6 +799,9 @@ public final class WewPluginManager {
         context.setObject(ctxAdd, forKeyedSubscript: "__ctxAdd" as NSString)
         context.setObject(promptBlock, forKeyedSubscript: "__prompt" as NSString)
         context.setObject(editLocalBlock, forKeyedSubscript: "__editLocal" as NSString)
+        context.setObject(clipGet, forKeyedSubscript: "__clipGet" as NSString)
+        context.setObject(clipPaste, forKeyedSubscript: "__clipPaste" as NSString)
+        context.setObject(chooseBlock, forKeyedSubscript: "__choose" as NSString)
         context.setObject(appHaptic, forKeyedSubscript: "__appHaptic" as NSString)
         context.setObject(appOpenURL, forKeyedSubscript: "__appOpenURL" as NSString)
         context.setObject(appCopy, forKeyedSubscript: "__appCopy" as NSString)
@@ -946,6 +979,11 @@ public final class WewPluginManager {
         remove: function (id) { __uiRemove(String(id)); },
         tint: function (hex) { __uiTint(hex ? String(hex) : ''); }
       },
+      clipboard: {
+        get: function () { return __clipGet(); },
+        paste: function (t, cb) { var id = ++__httpSeq; __httpCallbacks[id] = function (st) { if (cb) { cb(st === 200); } }; __clipPaste(String(t), id); }
+      },
+      choose: function (o, cb) { var id = ++__httpSeq; __httpCallbacks[id] = function (st, body) { if (cb) { cb(st === 200 ? parseInt(body, 10) : -1); } }; __choose(__json(o || {}), id); },
       contextMenu: { add: function (o) { __ctxAdd(__json(o || {})); } },
       prompt: function (o, cb) { var id = ++__httpSeq; __httpCallbacks[id] = function (st, body) { if (cb) { cb(st === 200 ? body : null); } }; __prompt(__json(o || {}), id); },
       messages: { editLocal: function (key, text) { __editLocal(String(key), String(text)); } },
