@@ -13,10 +13,8 @@ wew.on('contextmenu', function (id, msg) {
     }, function (text) {
       if (text === null || !String(text).trim()) { return; }
       wew.messages.editLocal(msg.key, text);
-      wew.toast('Изменено');
     });
   } else if (id === 'restore') {
-    wew.messages.restoreLocal(msg.key);
-    wew.toast('Оригинал возвращён');
+    wew.messages.editLocal(msg.key, msg.originalText);
   }
 });
