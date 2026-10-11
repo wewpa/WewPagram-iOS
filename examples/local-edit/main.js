@@ -15,6 +15,6 @@ wew.on('contextmenu', function (id, msg) {
       wew.messages.editLocal(msg.key, text);
     });
   } else if (id === 'restore') {
-    wew.messages.editLocal(msg.key, msg.originalText);
+    wew.messages.restoreLocal(msg.key);
   }
 });
