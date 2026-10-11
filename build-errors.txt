@@ -1,0 +1,160 @@
+run: 38167152659  sha: d16689ebef380f137f5e56e7661852235c65f7d0
+=== error lines ===
+7254:ERROR: /Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/submodules/SettingsUI/BUILD:5:14: Compiling Swift module //submodules/SettingsUI:SettingsUI failed: (Exit 1): worker failed: error executing SwiftCompile command (from swift_library rule target //submodules/SettingsUI:SettingsUI) 
+7265:submodules/SettingsUI/Sources/WewPagramPluginsController.swift:32:18: error: 'init(documentTypes:in:)' was deprecated in iOS 14.0 [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+7269:    |                  `- error: 'init(documentTypes:in:)' was deprecated in iOS 14.0 [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+7273:submodules/SettingsUI/Sources/WewPagramUI.swift:144:13: error: type 'WewPagramHeaderItem' does not conform to protocol 'ListViewItem'
+7277:    |             |- error: type 'WewPagramHeaderItem' does not conform to protocol 'ListViewItem'
+7295:Target //Telegram:Telegram failed to build
+7299:ERROR: Build did NOT complete successfully
+=== last 150 lines ===
+[7,651 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/ChatListHeaderComponent:ChatListHeaderComponent; 6s worker ... (3 actions, 2 running)
+[7,655 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/AlertComponent/AlertWebpagePreviewComponent:AlertWebpagePreviewComponent; 1s worker ... (3 actions, 2 running)
+[7,655 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/AlertComponent/AlertWebpagePreviewComponent:AlertWebpagePreviewComponent; 2s worker ... (3 actions running)
+[7,656 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/AlertComponent/AlertWebpagePreviewComponent:AlertWebpagePreviewComponent; 4s worker ... (3 actions, 2 running)
+[7,657 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/AlertComponent/AlertWebpagePreviewComponent:AlertWebpagePreviewComponent; 6s worker ... (3 actions running)
+[7,658 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 6s worker ... (3 actions running)
+[7,659 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 9s worker ... (3 actions, 2 running)
+[7,660 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 10s worker ... (3 actions running)
+[7,661 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 11s worker ... (3 actions running)
+[7,662 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 16s worker ... (3 actions, 2 running)
+[7,663 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 18s worker ... (3 actions running)
+[7,664 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 21s worker ... (3 actions, 2 running)
+[7,665 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 23s worker ... (3 actions running)
+[7,666 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 25s worker ... (3 actions, 2 running)
+[7,667 / 7,829] Compiling Swift module //submodules/ContactListUI:ContactListUI; 26s worker ... (3 actions running)
+[7,668 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/ComposePollScreen:ComposePollScreen; 19s worker ... (3 actions, 2 running)
+[7,668 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/ComposePollScreen:ComposePollScreen; 20s worker ... (3 actions running)
+[7,669 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/ComposePollScreen:ComposePollScreen; 22s worker ... (3 actions, 2 running)
+[7,672 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 4s worker ... (3 actions running)
+[7,673 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 9s worker ... (3 actions, 2 running)
+[7,674 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 11s worker ... (3 actions running)
+[7,675 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 20s worker ... (3 actions, 2 running)
+[7,675 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 21s worker ... (3 actions running)
+[7,676 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 23s worker ... (3 actions, 2 running)
+[7,678 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 25s worker ... (3 actions running)
+[7,679 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 28s worker ... (3 actions, 2 running)
+[7,684 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 29s worker ... (3 actions running)
+[7,685 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 34s worker ... (3 actions, 2 running)
+[7,686 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 35s worker ... (3 actions running)
+[7,687 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 41s worker ... (3 actions, 2 running)
+[7,689 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 42s worker ... (3 actions, 2 running)
+[7,690 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 44s worker ... (3 actions running)
+[7,690 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 54s worker ... (3 actions running)
+[7,691 / 7,829] Compiling Swift module //submodules/PeerInfoUI:PeerInfoUI; 59s worker ... (3 actions, 2 running)
+[7,697 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Communities/CommunityEditScreen:CommunityEditScreen; 1s worker ... (2 actions running)
+[7,698 / 7,829] Compiling Swift module //submodules/ChatListUI:ChatListUI; 10s worker ... (2 actions, 1 running)
+[7,699 / 7,829] Compiling Swift module //submodules/ChatListUI:ChatListUI; 11s worker ... (2 actions running)
+[7,700 / 7,829] Compiling Swift module //submodules/ChatListUI:ChatListUI; 17s worker ... (2 actions, 1 running)
+[7,701 / 7,829] Compiling Swift module //submodules/ChatListUI:ChatListUI; 18s worker
+[7,701 / 7,829] Compiling Swift module //submodules/ChatListUI:ChatListUI; 30s worker
+[7,701 / 7,829] Compiling Swift module //submodules/ChatListUI:ChatListUI; 62s worker
+[7,702 / 7,829] [Prepa] Compiling Swift module //submodules/TelegramUI/Components/Communities/CommunityViewScreen:CommunityViewScreen ... (3 actions, 0 running)
+[7,702 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatSideTopicsPanel:ChatSideTopicsPanel; 1s worker ... (3 actions running)
+[7,703 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatSideTopicsPanel:ChatSideTopicsPanel; 7s worker ... (3 actions, 2 running)
+[7,706 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Communities/CommunityViewScreen:CommunityViewScreen; 9s worker ... (3 actions running)
+[7,707 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageStickerItemNode:ChatMessageStickerItemNode; 5s worker ... (3 actions, 2 running)
+[7,709 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageStickerItemNode:ChatMessageStickerItemNode; 7s worker ... (3 actions running)
+[7,710 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Settings/AutomaticBusinessMessageSetupScreen:AutomaticBusinessMessageSetupScreen; 3s worker ... (3 actions, 2 running)
+[7,711 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Settings/AutomaticBusinessMessageSetupScreen:AutomaticBusinessMessageSetupScreen; 5s worker ... (3 actions running)
+[7,712 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Settings/AutomaticBusinessMessageSetupScreen:AutomaticBusinessMessageSetupScreen; 15s worker ... (3 actions, 2 running)
+[7,714 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Settings/AutomaticBusinessMessageSetupScreen:AutomaticBusinessMessageSetupScreen; 17s worker ... (3 actions running)
+[7,715 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageAnimatedStickerItemNode:ChatMessageAnimatedStickerItemNode; 17s worker ... (3 actions, 2 running)
+[7,718 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatInlineSearchResultsListComponent:ChatInlineSearchResultsListComponent; 7s worker ... (3 actions running)
+[7,720 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/PeerInfo/PeerInfoChatListPaneNode:PeerInfoChatListPaneNode; 2s worker ... (3 actions running)
+[7,721 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 4s worker ... (3 actions, 2 running)
+[7,722 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 6s worker ... (3 actions running)
+[7,723 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 11s worker ... (3 actions, 2 running)
+[7,724 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 12s worker ... (3 actions running)
+[7,725 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 15s worker ... (3 actions, 2 running)
+[7,725 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 16s worker ... (3 actions running)
+[7,726 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 19s worker ... (3 actions, 2 running)
+[7,728 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 21s worker ... (3 actions running)
+[7,729 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 24s worker ... (3 actions, 2 running)
+[7,731 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 25s worker ... (3 actions, 2 running)
+[7,733 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 26s worker ... (3 actions running)
+[7,734 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode:ChatMessageBubbleItemNode; 28s worker ... (3 actions, 2 running)
+[7,738 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 1s worker ... (2 actions, 1 running)
+[7,739 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 2s worker ... (2 actions running)
+[7,740 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 5s worker ... (2 actions, 1 running)
+[7,740 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 6s worker ... (3 actions running)
+[7,741 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 8s worker ... (3 actions, 2 running)
+[7,742 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 10s worker ... (3 actions running)
+[7,743 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 11s worker ... (3 actions, 2 running)
+[7,744 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 13s worker ... (3 actions running)
+[7,745 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 16s worker ... (3 actions, 2 running)
+[7,747 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 17s worker ... (3 actions running)
+[7,748 / 7,829] Compiling Swift module //submodules/BrowserUI:BrowserUI; 22s worker ... (3 actions, 2 running)
+[7,749 / 7,829] Compiling Swift module //submodules/WebUI:WebUI; 18s worker ... (3 actions, 2 running)
+[7,749 / 7,829] Compiling Swift module //submodules/WebUI:WebUI; 19s worker ... (3 actions running)
+[7,750 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatEmptyNode:ChatEmptyNode; 5s worker ... (3 actions, 2 running)
+[7,751 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatEmptyNode:ChatEmptyNode; 6s worker ... (3 actions running)
+[7,752 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatRecentActionsController:ChatRecentActionsController; 6s worker ... (3 actions running)
+[7,753 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatRecentActionsController:ChatRecentActionsController; 13s worker ... (3 actions, 2 running)
+[7,757 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatRecentActionsController:ChatRecentActionsController; 15s worker ... (2 actions running)
+[7,758 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatRecentActionsController:ChatRecentActionsController; 17s worker ... (2 actions, 1 running)
+[7,759 / 7,829] Compiling Swift module //submodules/TelegramUI/Components/Chat/ChatRecentActionsController:ChatRecentActionsController; 19s worker ... (2 actions running)
+[7,760 / 7,829] Compiling Swift module //submodules/SettingsUI:SettingsUI; 3s worker ... (2 actions, 1 running)
+[7,761 / 7,829] Compiling Swift module //submodules/SettingsUI:SettingsUI; 5s worker
+ERROR: /Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/submodules/SettingsUI/BUILD:5:14: Compiling Swift module //submodules/SettingsUI:SettingsUI failed: (Exit 1): worker failed: error executing SwiftCompile command (from swift_library rule target //submodules/SettingsUI:SettingsUI) 
+  (cd /private/var/tmp/_bazel_wewpagram/29f5729db1d87cf1fcc4436aa38123e2/execroot/_main && \
+  exec env - \
+    APPLE_SDK_PLATFORM=iPhoneOS \
+    APPLE_SDK_VERSION_OVERRIDE=26.2 \
+    PATH=/bin:/usr/bin:/usr/local/bin \
+    XCODE_VERSION_OVERRIDE=26.2.0.17C52 \
+    ZERO_AR_DATE=1 \
+  bazel-out/darwin_arm64-opt-exec/bin/external/rules_swift+/tools/worker/worker swiftc @bazel-out/ios_arm64-opt-ios-arm64-min15.0-ST-4fc4d341170e/bin/submodules/SettingsUI/SettingsUI.swiftmodule-0.params)
+# Configuration: 6476fa226ff1d258cbb75393e448e0aeec9a487bfac34ba5f61fd830a27e11f9
+# Execution platform: @@platforms//host:host
+submodules/SettingsUI/Sources/WewPagramPluginsController.swift:32:18: error: 'init(documentTypes:in:)' was deprecated in iOS 14.0 [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+ 30 | 
+ 31 | private func wewPickZip(from controller: ViewController?, completion: @escaping (Data?) -> Void) {
+ 32 |     let picker = UIDocumentPickerViewController(documentTypes: ["public.zip-archive", "com.pkware.zip-archive"], in: .import)
+    |                  `- error: 'init(documentTypes:in:)' was deprecated in iOS 14.0 [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration\DeprecatedDeclaration]8;;\]
+ 33 |     let delegate = WewZipPickerDelegate(completion: { url in
+ 34 |         wewActivePicker = nil
+
+submodules/SettingsUI/Sources/WewPagramUI.swift:144:13: error: type 'WewPagramHeaderItem' does not conform to protocol 'ListViewItem'
+142 | // MARK: - Header item (logo + "WewPagram 1.0.0")
+143 | 
+144 | final class WewPagramHeaderItem: ListViewItem, ItemListItem {
+    |             |- error: type 'WewPagramHeaderItem' does not conform to protocol 'ListViewItem'
+    |             `- note: add stubs for conformance
+145 |     let sectionId: ItemListSectionId
+146 |     let selectable: Bool = false
+
+Display.ListViewItem.nodeConfiguredForParams:2:6: note: protocol requires function 'nodeConfiguredForParams(async:params:synchronousLoads:neighbors:completion:)' with type '(@escaping (@escaping () -> Void) -> Void, ListViewItemLayoutParams, Bool, ListViewItemNeighbors, @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) -> ()'
+1 | protocol ListViewItem {
+2 | func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: Display.ListViewItemLayoutParams, synchronousLoads: Bool, neighbors: Display.ListViewItemNeighbors, completion: @escaping (Display.ListViewItemNode, @escaping () -> (SwiftSignalKit.Signal<Void, SwiftSignalKit.NoError>?, (Display.ListViewItemApply) -> Void)) -> Void)}
+  |      `- note: protocol requires function 'nodeConfiguredForParams(async:params:synchronousLoads:neighbors:completion:)' with type '(@escaping (@escaping () -> Void) -> Void, ListViewItemLayoutParams, Bool, ListViewItemNeighbors, @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) -> ()'
+3 | 
+
+Display.ListViewItem.updateNode:2:6: note: protocol requires function 'updateNode(async:node:params:neighbors:animation:completion:)' with type '(@escaping (@escaping () -> Void) -> Void, @escaping () -> ListViewItemNode, ListViewItemLayoutParams, ListViewItemNeighbors, ListViewItemUpdateAnimation, @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) -> ()'
+1 | protocol ListViewItem {
+2 | func updateNode(async: @escaping (@escaping () -> Void) -> Void, node: @escaping () -> Display.ListViewItemNode, params: Display.ListViewItemLayoutParams, neighbors: Display.ListViewItemNeighbors, animation: Display.ListViewItemUpdateAnimation, completion: @escaping (Display.ListViewItemNodeLayout, @escaping (Display.ListViewItemApply) -> Void) -> Void)}
+  |      `- note: protocol requires function 'updateNode(async:node:params:neighbors:animation:completion:)' with type '(@escaping (@escaping () -> Void) -> Void, @escaping () -> ListViewItemNode, ListViewItemLayoutParams, ListViewItemNeighbors, ListViewItemUpdateAnimation, @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) -> ()'
+3 | 
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+Target //Telegram:Telegram failed to build
+[7,762 / 7,829] checking cached actions
+INFO: Elapsed time: 5051.391s, Critical Path: 2195.41s
+INFO: 7762 processes: 1682 internal, 5370 local, 710 worker.
+ERROR: Build did NOT complete successfully
+Traceback (most recent call last):
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/Make.py", line 1413, in <module>
+    build(bazel=bazel_path, arguments=args)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/Make.py", line 693, in build
+    bazel_command_line.invoke_build()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/Make.py", line 326, in invoke_build
+    call_executable(combined_arguments)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-system/Make/BuildEnvironment.py", line 104, in call_executable
+    subprocess.check_call(resolved_arguments, env=resolved_env)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 420, in check_call
+    raise CalledProcessError(retcode, cmd)
+subprocess.CalledProcessError: Command '['/Users/runner/work/WewPagram-iOS/WewPagram-iOS/upstream/build-input/bazel-9.2.0-darwin-arm64', '--output_user_root=/private/var/tmp/_bazel_wewpagram', 'build', 'Telegram/Telegram', '--announce_rc', '--features=swift.use_global_module_cache', '--verbose_failures', '--remote_cache_async', '--define=buildNumber=31573', '-c', 'opt', '--ios_multi_cpus=arm64', '--watchos_cpus=arm64_32', '--apple_generate_dsym', '--output_groups=+dsyms', '--@rules_rust//rust/settings:lto=fat', '--features=swift.opt_uses_wmo', '--features=swift.opt_uses_osize', '--features=dead_strip', '--objc_enable_binary_stripping']' returned non-zero exit status 1.
