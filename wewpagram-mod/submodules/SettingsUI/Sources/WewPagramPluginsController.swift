@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import UniformTypeIdentifiers
 import Display
 import SwiftSignalKit
 import TelegramCore
@@ -29,7 +30,7 @@ private final class WewZipPickerDelegate: NSObject, UIDocumentPickerDelegate {
 private var wewActivePicker: WewZipPickerDelegate?
 
 private func wewPickZip(from controller: ViewController?, completion: @escaping (Data?) -> Void) {
-    let picker = UIDocumentPickerViewController(documentTypes: ["public.zip-archive", "com.pkware.zip-archive"], in: .import)
+    let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.zip], asCopy: true)
     let delegate = WewZipPickerDelegate(completion: { url in
         wewActivePicker = nil
         guard let url = url else {
